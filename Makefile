@@ -27,7 +27,7 @@ test:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=systemautoscaler-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=edgeautoscaler-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
