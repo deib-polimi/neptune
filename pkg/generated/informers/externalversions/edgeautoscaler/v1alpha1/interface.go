@@ -8,6 +8,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// CommunitySchedules returns a CommunityScheduleInformer.
+	CommunitySchedules() CommunityScheduleInformer
 	// CommunitySettingses returns a CommunitySettingsInformer.
 	CommunitySettingses() CommunitySettingsInformer
 }
@@ -21,6 +23,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// CommunitySchedules returns a CommunityScheduleInformer.
+func (v *version) CommunitySchedules() CommunityScheduleInformer {
+	return &communityScheduleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // CommunitySettingses returns a CommunitySettingsInformer.

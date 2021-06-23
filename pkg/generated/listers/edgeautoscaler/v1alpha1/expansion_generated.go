@@ -2,6 +2,14 @@
 
 package v1alpha1
 
+// CommunityScheduleListerExpansion allows custom methods to be added to
+// CommunityScheduleLister.
+type CommunityScheduleListerExpansion interface{}
+
+// CommunityScheduleNamespaceListerExpansion allows custom methods to be added to
+// CommunityScheduleNamespaceLister.
+type CommunityScheduleNamespaceListerExpansion interface{}
+
 // CommunitySettingsListerExpansion allows custom methods to be added to
 // CommunitySettingsLister.
 type CommunitySettingsListerExpansion interface{}

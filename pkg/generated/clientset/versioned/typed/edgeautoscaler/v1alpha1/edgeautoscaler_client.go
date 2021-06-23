@@ -10,12 +10,17 @@ import (
 
 type EdgeautoscalerV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	CommunitySchedulesGetter
 	CommunitySettingsesGetter
 }
 
 // EdgeautoscalerV1alpha1Client is used to interact with features provided by the edgeautoscaler.polimi.it group.
 type EdgeautoscalerV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *EdgeautoscalerV1alpha1Client) CommunitySchedules(namespace string) CommunityScheduleInterface {
+	return newCommunitySchedules(c, namespace)
 }
 
 func (c *EdgeautoscalerV1alpha1Client) CommunitySettingses(namespace string) CommunitySettingsInterface {
