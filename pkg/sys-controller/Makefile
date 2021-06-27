@@ -1,5 +1,5 @@
 BUILD_SETTINGS = CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-IMAGE = community-controller
+IMAGE = system-controller
 IMAGE_VERSION = $(shell git tag --points-at HEAD | sed '/$(IMAGE)\/.*/!s/.*//' | sed 's/\//:/')
 REPO = systemautoscaler
 
