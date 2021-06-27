@@ -27,6 +27,20 @@ type CommunitySettings struct {
 }
 
 type CommunitySettingsSpec struct {
+	// +kubebuilder:validation:Required
+	CommunitySize int64 `json:"community-size,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Minimum=0
+	DelayThreshold int32 `json:"delay-threshold,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default:=30
+	ProbabilityThreshold int32 `json:"probability-threshold,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=20
+	Iterations int64 `json:"iterations,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
