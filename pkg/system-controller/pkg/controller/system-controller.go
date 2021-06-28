@@ -8,7 +8,7 @@ import (
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/queue"
-	slpaClient "github.com/lterrac/edge-autoscaler/pkg/sys-controller/pkg/slpaclient"
+	slpaClient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"

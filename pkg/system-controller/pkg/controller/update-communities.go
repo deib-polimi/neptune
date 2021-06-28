@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	slpaclient "github.com/lterrac/edge-autoscaler/pkg/sys-controller/pkg/slpaclient"
+	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

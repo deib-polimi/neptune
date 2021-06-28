@@ -8,7 +8,7 @@ import (
 	eainformers "github.com/lterrac/edge-autoscaler/pkg/generated/informers/externalversions"
 	informers2 "github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
-	syscontroller "github.com/lterrac/edge-autoscaler/pkg/sys-controller/pkg/controller"
+	syscontroller "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/controller"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
