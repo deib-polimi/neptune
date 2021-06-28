@@ -13,15 +13,31 @@ func TestParseRawCommunities(t *testing.T) {
 		desired     []Community
 	}{
 		{
-			description: "",
-			input:       []byte(""),
+			description: "basic test",
+			input: []byte(`{
+				"communities": [
+						{
+								"name": "community-5",
+								"members": [
+										{
+												"name": "node-5",
+												"labels": {
+														"edgeautoscaler.polimi.it/role": "LEADER"
+												}
+										}
+								]
+						}
+				]
+		}`),
 			desired: []Community{
 				{
-					Name: "",
+					Name: "community-5",
 					Members: []Host{
 						{
-							Name:   "",
-							Labels: make(map[string]interface{}),
+							Name: "node-5",
+							Labels: map[string]interface{}{
+								"edgeautoscaler.polimi.it/role": "LEADER",
+							},
 						},
 					},
 				},

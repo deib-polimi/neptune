@@ -14,8 +14,8 @@ type RequestSLPA struct {
 
 // Host keeps track of a node and its labels
 type Host struct {
-	Name   string
-	Labels map[string]interface{}
+	Name   string                 `json:"name"`
+	Labels map[string]interface{} `json:"labels"`
 }
 
 // DelayMatrix contains the delays between each pair of nodes
