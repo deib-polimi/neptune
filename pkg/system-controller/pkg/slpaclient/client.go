@@ -27,7 +27,7 @@ const (
 	Communities Path = "/api/communities"
 )
 
-func (p Path) String() string {
+func (p Path) string() string {
 	return string(p)
 }
 
@@ -84,7 +84,7 @@ func (c *Client) sendRequest(req *RequestSLPA, p Path) ([]byte, error) {
 	host := c.Host
 	host = strings.Replace(host, "{pod_address}", slpaAddress, -1)
 	host = strings.Replace(host, "{pod_port}", "4567", -1)
-	path := p.String()
+	path := p.string()
 
 	// Create the request
 	slpaServerURL := url.URL{

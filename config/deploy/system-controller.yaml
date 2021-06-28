@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-autoscaler-system-controller
+  namespace: kube-system
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: edge-autoscaler-system-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: edge-autoscaler-system-controller
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: edge-autoscaler-system-controller
+      containers:
+      - name: system-controller
+        image: edge-autoscaler/system-controller:0.0.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 443
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+      - name: partition-slpa
+        image: edge-autoscaler/slpa-rest:0.0.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4567
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+
