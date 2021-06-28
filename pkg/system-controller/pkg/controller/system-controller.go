@@ -29,8 +29,11 @@ const (
 	// is synced successfully
 	MessageResourceSynced string = "Community Settings synced successfully"
 
-	// CommunityRoleLabel defines the label that identify a role of a node inside a community
+	// CommunityRoleLabel identifies a role of a node inside a community
 	CommunityRoleLabel string = "edgeautoscaler.polimi.it/role"
+
+	// CommunityLabel defines the community a node belongs to
+	CommunityLabel string = "edgeautoscaler.polimi.it/community"
 )
 
 // SystemController works at cluster level to divide the computational resources
@@ -44,7 +47,10 @@ type SystemController struct {
 	kubernetesClientset kubernetes.Interface
 
 	// slpaClient is used to interact with SLPA algorithm
-	slpaClient slpaClient.Client
+	slpaClient *slpaClient.Client
+
+	// communityUpdater applies the output of SLPA to Kubernets Nodes
+	communityUpdater *CommunityUpdater
 
 	listers informers.Listers
 
@@ -79,6 +85,9 @@ func NewController(
 	controller := &SystemController{
 		edgeAutoscalerClientSet: eaClientSet,
 		kubernetesClientset:     kubernetesClientset,
+		slpaClient:              slpaClient.NewClient(),
+		//TODO: don't call GetListers() 2 times
+		communityUpdater:        NewCommunityUpdater(kubernetesClientset.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List),
 		recorder:                recorder,
 		listers:                 informers.GetListers(),
 		nodeSynced:              informers.Node.Informer().HasSynced,

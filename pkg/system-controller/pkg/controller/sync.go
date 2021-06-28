@@ -43,7 +43,7 @@ func (c *SystemController) syncCommunitySettings(key string) error {
 	}
 
 	// update labels on corev1.Node with the corresponding community
-	err = c.updateCommunityNodes(communities)
+	err = c.communityUpdater.UpdateCommunityNodes(communities)
 
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error while updating nodes: %s", err))
