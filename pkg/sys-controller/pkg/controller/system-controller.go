@@ -8,6 +8,7 @@ import (
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/queue"
+	slpaClient "github.com/lterrac/edge-autoscaler/pkg/sys-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -19,15 +20,31 @@ import (
 )
 
 const (
-	controllerAgentName = "system-controller"
+	controllerAgentName string = "system-controller"
+
+	// SuccessSynced is used as part of the Event 'reason' when a podScale is synced
+	SuccessSynced string = "Synced"
+
+	// MessageResourceSynced is the message used for an Event fired when a podScale
+	// is synced successfully
+	MessageResourceSynced string = "Community Settings synced successfully"
+
+	// CommunityRoleLabel defines the label that identify a role of a node inside a community
+	CommunityRoleLabel string = "edgeautoscaler.polimi.it/role"
 )
 
+// SystemController works at cluster level to divide the computational resources
+// in communities. It is also responsible of modify the communities according to
+// changes in cluster topology and in case of performance degradation
 type SystemController struct {
 	// saClientSet is a clientset for our own API group
 	edgeAutoscalerClientSet eaclientset.Interface
 
 	// kubernetesCLientset is the client-go of kubernetes
 	kubernetesClientset kubernetes.Interface
+
+	// slpaClient is used to interact with SLPA algorithm
+	slpaClient slpaClient.Client
 
 	listers informers.Listers
 
@@ -38,10 +55,11 @@ type SystemController struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	// workqueue contains all the servicelevelagreements that needs a recommendation
+	// workqueue contains all the communitysettings to sync
 	workqueue queue.Queue
 }
 
+// NewController returns a new SystemController
 func NewController(
 	kubernetesClientset *kubernetes.Clientset,
 	eaClientSet eaclientset.Interface,
@@ -49,8 +67,8 @@ func NewController(
 ) *SystemController {
 
 	// Create event broadcaster
-	// Add sample-controller types to the default Kubernetes Scheme so Events can be
-	// logged for sample-controller types.
+	// Add system-controller types to the default Kubernetes Scheme so Events can be
+	// logged for system-controller types.
 	utilruntime.Must(eascheme.AddToScheme(scheme.Scheme))
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -67,6 +85,14 @@ func NewController(
 		communitySettingsSynced: informers.CommunitySettingses.Informer().HasSynced,
 		workqueue:               queue.NewQueue("CommunitySettingsQueue"),
 	}
+
+	klog.Info("Setting up event handlers")
+	// Set up an event handler for when ServiceLevelAgreements resources change
+	informers.CommunitySettingses.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleCommunitySettingsAdd,
+		UpdateFunc: controller.handleCommunitySettingsUpdate,
+		DeleteFunc: controller.handleCommunitySettingsDeletion,
+	})
 
 	return controller
 }
@@ -93,20 +119,28 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 	klog.Info("Starting system controller workers")
 
 	for i := 0; i < threadiness; i++ {
-		go wait.Until(c.runWorker, time.Second, stopCh)
+		go wait.Until(c.runStandardWorker, time.Second, stopCh)
 	}
+
+	// TODO: implement
+	// go wait.Until(c.runPerformanceDegradationObserver, time.Second, stopCh)
+	// go wait.Until(c.runTopologyObserver, time.Second, stopCh)
 
 	return nil
 }
 
-func (c *SystemController) runWorker() {
-	for c.workqueue.ProcessNextItem(c.handleCommunitySettings) {
+// handles standard partitioning (e.g. first partioning and cache sync)
+func (c *SystemController) runStandardWorker() {
+	for c.workqueue.ProcessNextItem(c.syncCommunitySettings) {
 	}
 }
 
-func (c *SystemController) handleCommunitySettings(key string) error {
+// control loop to handle performance degradation inside communities
+func (c *SystemController) runPerformanceDegradationObserver() {
+}
 
-	return nil
+// control loop to handle cluster topology changes
+func (c *SystemController) runTopologyObserver() {
 }
 
 // Shutdown is called when the controller has finished its work
