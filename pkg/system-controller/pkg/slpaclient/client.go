@@ -56,8 +56,17 @@ func NewClient() *Client {
 func (c *Client) Communities(req *RequestSLPA) ([]Community, error) {
 	communities, err := c.sendRequest(req, Communities)
 
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	return c.parseRawCommunities(communities)
+}
+
+func (c *Client) parseRawCommunities(communities []byte) ([]Community, error) {
 	var res ResponseSLPA
-	err = json.Unmarshal(communities, &res)
+	err := json.Unmarshal(communities, &res)
 
 	if err != nil {
 		klog.Error(err)
