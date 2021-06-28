@@ -16,7 +16,7 @@ type CommunitySettingsList struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
+// +kubebuilder:resource:scope=Cluster
 // CommunitySettings is a configuration for the autoscaling system.
 type CommunitySettings struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -32,7 +32,7 @@ type CommunitySettingsSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:validation:Minimum=0
-	DelayThreshold int32 `json:"delay-threshold,omitempty"`
+	MaximumDelay int32 `json:"maximum-delay,omitempty"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:validation:Minimum=0

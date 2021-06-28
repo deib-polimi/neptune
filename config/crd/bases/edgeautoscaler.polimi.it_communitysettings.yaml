@@ -14,7 +14,7 @@ spec:
     listKind: CommunitySettingsList
     plural: communitysettings
     singular: communitysettings
-  scope: Namespaced
+  scope: Cluster
   validation:
     openAPIV3Schema:
       description: CommunitySettings is a configuration for the autoscaling system.
@@ -36,14 +36,14 @@ spec:
             community-size:
               format: int64
               type: integer
-            delay-threshold:
-              format: int32
-              maximum: 100
-              minimum: 0
-              type: integer
             iterations:
               default: 20
               format: int64
+              type: integer
+            maximum-delay:
+              format: int32
+              maximum: 100
+              minimum: 0
               type: integer
             probability-threshold:
               default: 30
@@ -51,9 +51,6 @@ spec:
               maximum: 100
               minimum: 0
               type: integer
-          required:
-          - community-size
-          - delay-threshold
           type: object
       required:
       - spec
