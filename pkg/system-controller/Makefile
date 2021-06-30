@@ -24,11 +24,11 @@ e2e:
 coverage: test
 	@go tool cover -func=coverage.out
 
-release:
+release: build
 	@if [ -n "$(IMAGE_VERSION)" ]; then \
 		echo "Building $(IMAGE_VERSION)" ;\
-		docker build -t $(REPO)/$(IMAGE):$(IMAGE_VERSION) . ;\
-		docker push $(REPO)/$(IMAGE_VERSION) ;\
+		docker build --rm -t $(REPO)/$(IMAGE):$(IMAGE_VERSION) . ;\
+		docker push $(REPO)/$(IMAGE):$(IMAGE_VERSION) ;\
 	else \
 		echo "$(IMAGE) unchanged: no version tag on HEAD commit" ;\
 	fi
