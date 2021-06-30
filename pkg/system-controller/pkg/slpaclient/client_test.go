@@ -47,7 +47,7 @@ func TestParseRawCommunities(t *testing.T) {
 
 	for _, tt := range testcases {
 		t.Run(tt.description, func(t *testing.T) {
-			client := NewClient()
+			client := NewClient("")
 
 			actual, err := client.parseRawCommunities(tt.input)
 

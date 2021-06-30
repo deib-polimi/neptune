@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -32,7 +31,7 @@ func (p Path) string() string {
 }
 
 // NewClient returns a new MetricClient representing a metric client.
-func NewClient() *Client {
+func NewClient(host string) *Client {
 	httpClient := http.Client{
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
@@ -47,13 +46,14 @@ func NewClient() *Client {
 	}
 	client := &Client{
 		httpClient: httpClient,
-		Host:       "{pod_address}:{pod_port}",
+		Host:       host,
 	}
 	return client
 }
 
 // Communities returns the results of SLPA algorithm
 func (c *Client) Communities(req *RequestSLPA) ([]Community, error) {
+
 	communities, err := c.sendRequest(req, Communities)
 
 	if err != nil {
@@ -77,19 +77,13 @@ func (c *Client) parseRawCommunities(communities []byte) ([]Community, error) {
 }
 
 func (c *Client) sendRequest(req *RequestSLPA, p Path) ([]byte, error) {
-	//TODO: make it custom
-	slpaAddress := "127.0.0.1"
 
-	// Compose host and path
-	host := c.Host
-	host = strings.Replace(host, "{pod_address}", slpaAddress, -1)
-	host = strings.Replace(host, "{pod_port}", "4567", -1)
 	path := p.string()
 
 	// Create the request
 	slpaServerURL := url.URL{
 		Scheme: "http",
-		Host:   host,
+		Host:   c.Host,
 		Path:   path,
 	}
 
@@ -113,6 +107,8 @@ func (c *Client) sendRequest(req *RequestSLPA, p Path) ([]byte, error) {
 		klog.Error(err)
 		return nil, err
 	}
+
+	klog.Info("received response form host: %v", response.Body)
 
 	// Parse the response
 	return ioutil.ReadAll(response.Body)
