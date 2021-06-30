@@ -13,7 +13,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (c *SystemController) syncCommunitySettings(key string) error {
+const (
+	EmptyNodeList string = "there are no or too few ready nodes for building communities"
+)
+
+func (c *SystemController) syncCommunityConfiguration(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	_, name, err := cache.SplitMetaNamespaceKey(key)
 
@@ -22,43 +26,41 @@ func (c *SystemController) syncCommunitySettings(key string) error {
 		return nil
 	}
 
-	// Get the CS resource with this namespace/name
-	cs, err := c.listers.CommunitySettingses("").Get(name)
+	// Get the CC resource with this namespace/name
+	cc, err := c.listers.CommunityConfigurationLister.Get(name)
 
-	//TODO: handle multiple Community Settings in cluster. Now there should be ONLY one settings per cluster
+	//TODO: handle multiple Community Settings in cluster. Now there should be ONLY one configuration per cluster
 	if err != nil {
-		// The CS resource may no longer exist, so we stop processing.
+		// The CC resource may no longer exist, so we stop processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("CommunitySettings '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("CommunityConfiguraton '%s' in work queue no longer exists", key))
 			return nil
 		}
 		return err
 	}
 
-	communities, err := c.ComputeCommunities(cs)
+	communities, err := c.ComputeCommunities(cc)
 
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("error while executing SLPA: %s", err))
-		return nil
+		return fmt.Errorf("error while executing SLPA: %s", err)
 	}
 
 	// update labels on corev1.Node with the corresponding community
 	err = c.communityUpdater.UpdateCommunityNodes(communities)
 
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("error while updating nodes: %s", err))
-		return nil
+		return fmt.Errorf("error while updating nodes: %s", err)
 	}
 
-	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	c.recorder.Event(cc, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
 // ComputeCommunities divides cluster nodes into communities according to the settings passed as input
 // using SLPA
-func (c *SystemController) ComputeCommunities(cs *eaapi.CommunitySettings) ([]slpaclient.Community, error) {
+func (c *SystemController) ComputeCommunities(cc *eaapi.CommunityConfiguration) ([]slpaclient.Community, error) {
 	// create the input JSON request used by SLPA algorithm
-	req, err := c.fetchSLPAData(cs)
+	req, err := c.fetchSLPAData(cc)
 
 	if err != nil {
 		return nil, fmt.Errorf("fetching slpa data failed: %s", err)
@@ -68,7 +70,7 @@ func (c *SystemController) ComputeCommunities(cs *eaapi.CommunitySettings) ([]sl
 	return c.slpaClient.Communities(req)
 }
 
-func (c *SystemController) fetchSLPAData(cs *eaapi.CommunitySettings) (*slpaclient.RequestSLPA, error) {
+func (c *SystemController) fetchSLPAData(cc *eaapi.CommunityConfiguration) (*slpaclient.RequestSLPA, error) {
 
 	// Get all nodes in cluster
 	nodes, err := c.listers.NodeLister.List(labels.Everything())
@@ -78,53 +80,62 @@ func (c *SystemController) fetchSLPAData(cs *eaapi.CommunitySettings) (*slpaclie
 	}
 
 	// Keep only the ones in ready state.
-	nodes = c.filterReadyNodes(nodes)
+	nodes, err = filterReadyNodes(nodes)
+
+	if err != nil {
+		return nil, fmt.Errorf("error while filtering ready nodes: %s", err)
+	}
 
 	// Get delay matrix
 	delays, err := c.getNodeDelays(nodes)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while retrieving node delays: %s", err)
 	}
 
-	request := slpaclient.NewRequestSLPA(cs, nodes, delays)
+	c.slpaClient = slpaclient.NewClient(cc.Spec.SlpaService)
+
+	request := slpaclient.NewRequestSLPA(cc, nodes, delays)
 
 	return request, nil
 }
 
-func (c *SystemController) filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node) {
+func filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node, err error) {
 	// TODO: once delay discovery is implemented modify it according to changes
 
 	for _, node := range nodes {
-		conditions := node.Status.Conditions
-		var lastStatus corev1.NodeCondition
-
-		for _, condition := range conditions {
-			if condition.LastHeartbeatTime.After(lastStatus.LastHeartbeatTime.Time) {
-				lastStatus = condition
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				result = append(result, node)
 			}
-		}
-
-		if lastStatus.Status == corev1.ConditionTrue {
-			result = append(result, node)
 		}
 	}
 
-	return
+	if len(result) < 1 {
+		return result, fmt.Errorf(EmptyNodeList)
+	}
+
+	return result, nil
 }
 
 // TODO: Up to this point the delay matrix is hard coded
-func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]float32, err error) {
+func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]int32, err error) {
+	delays = make([][]int32, len(nodes))
+
+	for i := range delays {
+		delays[i] = make([]int32, len(nodes))
+	}
+
 	// TODO: refactor once delay discovery implemented
 	err = nil
 	for firstNode := range nodes {
 		for secondNode := range nodes {
-			value := 0.2
+			value := 2
 
 			if firstNode == secondNode {
 				value = 0
 			}
-			delays[firstNode][secondNode] = float32(value)
+			delays[firstNode][secondNode] = int32(value)
 		}
 	}
 
