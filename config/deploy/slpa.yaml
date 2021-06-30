@@ -1,28 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edge-system-controller
-  namespace: kube-system
+  name: slpa-algorithm
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: edge-system-controller
+      app: slpa-algorithm
   replicas: 1
   template:
     metadata:
       labels:
-        app: edge-system-controller
+        app: slpa-algorithm
     spec:
-      automountServiceAccountToken: true
-      serviceAccountName: system-controller
       containers:
-      - name: system-controller
-        image: systemautoscaler/system-controller:0.0.1
+      - name: slpa-algorithm
+        image: systemautoscaler/slpa-rest:0.0.1
         imagePullPolicy: Always
         ports:
-        - containerPort: 443
+        - containerPort: 4567
         resources:
           limits:
             cpu: 200m
@@ -30,3 +27,16 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slpa
+  labels:
+    app: slpa-algorithm
+spec:
+  ports:
+    - port: 4567
+  selector:
+    app: slpa-algorithm
+

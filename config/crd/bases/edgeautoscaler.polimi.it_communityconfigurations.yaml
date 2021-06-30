@@ -6,19 +6,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: communityschedules.edgeautoscaler.polimi.it
+  name: communityconfigurations.edgeautoscaler.polimi.it
 spec:
   group: edgeautoscaler.polimi.it
   names:
-    kind: CommunitySchedule
-    listKind: CommunityScheduleList
-    plural: communityschedules
-    singular: communityschedule
-  scope: Namespaced
+    kind: CommunityConfiguration
+    listKind: CommunityConfigurationList
+    plural: communityconfigurations
+    singular: communityconfiguration
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: CommunityConfiguration is a configuration for the autoscaling
+          system.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,6 +35,28 @@ spec:
           metadata:
             type: object
           spec:
+            properties:
+              community-size:
+                format: int64
+                type: integer
+              iterations:
+                default: 20
+                format: int64
+                type: integer
+              maximum-delay:
+                format: int32
+                maximum: 100
+                minimum: 0
+                type: integer
+              probability-threshold:
+                default: 30
+                format: int32
+                maximum: 100
+                minimum: 0
+                type: integer
+              slpa-service:
+                default: slpa-rest
+                type: string
             type: object
         required:
         - spec

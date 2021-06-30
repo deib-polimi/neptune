@@ -1,9 +1,10 @@
 apiVersion: edgeautoscaler.polimi.it/v1alpha1
-kind: CommunitySettings
+kind: CommunityConfiguration
 metadata:
-  name: example-cs
+  name: example-cc
 spec:
-  communitySize: 1
-  maximumDelay: 2
-  probabilityThreshold: 30
+  community-size: 3
+  maximum-delay: 100
+  probability-threshold: 20
   iterations: 20
+  slpa-service: slpa.default.svc.cluster.local:4567

@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: system-controller
+  namespace: kube-system
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-autoscaler:system-controller
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "nodes"]
+  verbs: ["update", "get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["*"]
+- apiGroups: ["edgeautoscaler.polimi.it"]
+  resources: ["communityconfigurations", "communityschedules"]
+  verbs: ["*"]
+  # verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-autoscaler:system-controller
+subjects:
+- kind: ServiceAccount
+  name: system-controller
+  namespace: kube-system
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: edge-autoscaler:system-controller
+  apiGroup: rbac.authorization.k8s.io
