@@ -12,12 +12,12 @@ type FakeEdgeautoscalerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeEdgeautoscalerV1alpha1) CommunitySchedules(namespace string) v1alpha1.CommunityScheduleInterface {
-	return &FakeCommunitySchedules{c, namespace}
+func (c *FakeEdgeautoscalerV1alpha1) CommunityConfigurations() v1alpha1.CommunityConfigurationInterface {
+	return &FakeCommunityConfigurations{c}
 }
 
-func (c *FakeEdgeautoscalerV1alpha1) CommunitySettingses(namespace string) v1alpha1.CommunitySettingsInterface {
-	return &FakeCommunitySettingses{c, namespace}
+func (c *FakeEdgeautoscalerV1alpha1) CommunitySchedules(namespace string) v1alpha1.CommunityScheduleInterface {
+	return &FakeCommunitySchedules{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

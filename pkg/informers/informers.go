@@ -8,11 +8,11 @@ import (
 )
 
 type Informers struct {
-	Pod                 coreinformers.PodInformer
-	Node                coreinformers.NodeInformer
-	Service             coreinformers.ServiceInformer
-	CommunitySettingses sainformers.CommunitySettingsInformer
-	CommunitySchedule   sainformers.CommunityScheduleInformer
+	Pod                    coreinformers.PodInformer
+	Node                   coreinformers.NodeInformer
+	Service                coreinformers.ServiceInformer
+	CommunityConfiguration sainformers.CommunityConfigurationInformer
+	CommunitySchedule      sainformers.CommunityScheduleInformer
 }
 
 func (i *Informers) GetListers() Listers {
@@ -20,7 +20,7 @@ func (i *Informers) GetListers() Listers {
 		i.Pod.Lister(),
 		i.Node.Lister(),
 		i.Service.Lister(),
-		i.CommunitySettingses.Lister(),
+		i.CommunityConfiguration.Lister(),
 		i.CommunitySchedule.Lister(),
 	}
 }
@@ -29,6 +29,6 @@ type Listers struct {
 	corelisters.PodLister
 	corelisters.NodeLister
 	corelisters.ServiceLister
-	salisters.CommunitySettingsLister
+	salisters.CommunityConfigurationLister
 	salisters.CommunityScheduleLister
 }

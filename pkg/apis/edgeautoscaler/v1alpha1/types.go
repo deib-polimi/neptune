@@ -5,28 +5,32 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// CommunitySettingsList is a list of CommunitySettings resources
-type CommunitySettingsList struct {
+// +kubebuilder:resource:scope=Cluster
+// CommunityConfigurationList is a list of CommunitySettings resources
+type CommunityConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []CommunitySettings `json:"items"`
+	Items []CommunityConfiguration `json:"items"`
 }
 
 // +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:scope=Cluster
-// CommunitySettings is a configuration for the autoscaling system.
-type CommunitySettings struct {
+// CommunityConfiguration is a configuration for the autoscaling system.
+type CommunityConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// +kubebuilder:validation:Required
-	Spec CommunitySettingsSpec `json:"spec"`
+	Spec CommunityConfigurationSpec `json:"spec"`
 }
 
-type CommunitySettingsSpec struct {
+type CommunityConfigurationSpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=slpa-rest
+	SlpaService string `json:"slpa-service,omitempty"`
 	// +kubebuilder:validation:Required
 	CommunitySize int64 `json:"community-size,omitempty"`
 	// +kubebuilder:validation:Required
@@ -48,7 +52,7 @@ type CommunityScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []CommunitySettings `json:"items"`
+	Items []CommunityConfiguration `json:"items"`
 }
 
 // +genclient

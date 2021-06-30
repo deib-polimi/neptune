@@ -2,6 +2,6 @@
 
 package v1alpha1
 
-type CommunityScheduleExpansion interface{}
+type CommunityConfigurationExpansion interface{}
 
-type CommunitySettingsExpansion interface{}
+type CommunityScheduleExpansion interface{}
