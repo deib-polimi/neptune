@@ -42,16 +42,16 @@ func main() {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Second*30)
-	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Second*30)
+	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Minute*30)
+	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Minute*30)
 
 	// TODO: check name of this variable
 	informers := informers2.Informers{
-		Pod:                 coreInformerFactory.Core().V1().Pods(),
-		Node:                coreInformerFactory.Core().V1().Nodes(),
-		Service:             coreInformerFactory.Core().V1().Services(),
-		CommunitySchedule:   eaInformerFactory.Edgeautoscaler().V1alpha1().CommunitySchedules(),
-		CommunitySettingses: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunitySettingses(),
+		Pod:                    coreInformerFactory.Core().V1().Pods(),
+		Node:                   coreInformerFactory.Core().V1().Nodes(),
+		Service:                coreInformerFactory.Core().V1().Services(),
+		CommunitySchedule:      eaInformerFactory.Edgeautoscaler().V1alpha1().CommunitySchedules(),
+		CommunityConfiguration: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
 	}
 
 	systemController := syscontroller.NewController(

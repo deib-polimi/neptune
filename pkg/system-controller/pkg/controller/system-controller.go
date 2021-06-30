@@ -61,7 +61,7 @@ type SystemController struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	// workqueue contains all the communitysettings to sync
+	// workqueue contains all the communityconfigurations to sync
 	workqueue queue.Queue
 }
 
@@ -85,19 +85,18 @@ func NewController(
 	controller := &SystemController{
 		edgeAutoscalerClientSet: eaClientSet,
 		kubernetesClientset:     kubernetesClientset,
-		slpaClient:              slpaClient.NewClient(),
 		//TODO: don't call GetListers() 2 times
 		communityUpdater:        NewCommunityUpdater(kubernetesClientset.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List),
 		recorder:                recorder,
 		listers:                 informers.GetListers(),
 		nodeSynced:              informers.Node.Informer().HasSynced,
-		communitySettingsSynced: informers.CommunitySettingses.Informer().HasSynced,
+		communitySettingsSynced: informers.CommunityConfiguration.Informer().HasSynced,
 		workqueue:               queue.NewQueue("CommunitySettingsQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when ServiceLevelAgreements resources change
-	informers.CommunitySettingses.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.handleCommunitySettingsAdd,
 		UpdateFunc: controller.handleCommunitySettingsUpdate,
 		DeleteFunc: controller.handleCommunitySettingsDeletion,
@@ -140,7 +139,7 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 
 // handles standard partitioning (e.g. first partioning and cache sync)
 func (c *SystemController) runStandardWorker() {
-	for c.workqueue.ProcessNextItem(c.syncCommunitySettings) {
+	for c.workqueue.ProcessNextItem(c.syncCommunityConfiguration) {
 	}
 }
 
