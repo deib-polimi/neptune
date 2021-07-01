@@ -11,6 +11,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
+// UpdateNodeFunc updates the node in the cluster with the corresponding label
+type UpdateNodeFunc func(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (*corev1.Node, error)
+
+// ListNodeFunc retrieves the nodes used to build communities
+type ListNodeFunc func(selector labels.Selector) (ret []*corev1.Node, err error)
+
 // CommunityUpdater takes care of keeping updated Kubernetes Nodes according to the last SLPA execution
 type CommunityUpdater struct {
 	updatedNodes map[string]*corev1.Node
@@ -28,12 +34,6 @@ func NewCommunityUpdater(updateFunc UpdateNodeFunc, listFunc ListNodeFunc) *Comm
 		listFunc:     listFunc,
 	}
 }
-
-// UpdateNodeFunc updates the node in the cluster with the corresponding label
-type UpdateNodeFunc func(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (*corev1.Node, error)
-
-// ListNodeFunc retrieves the nodes used to build communities
-type ListNodeFunc func(selector labels.Selector) (ret []*corev1.Node, err error)
 
 // UpdateCommunityNodes applies the new labels to Kubernetes Nodes
 func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Community) error {

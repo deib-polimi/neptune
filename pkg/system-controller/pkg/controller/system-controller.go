@@ -54,8 +54,8 @@ type SystemController struct {
 
 	listers informers.Listers
 
-	nodeSynced              cache.InformerSynced
-	communitySettingsSynced cache.InformerSynced
+	nodeSynced                    cache.InformerSynced
+	communityConfigurationsSynced cache.InformerSynced
 
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -86,20 +86,20 @@ func NewController(
 		edgeAutoscalerClientSet: eaClientSet,
 		kubernetesClientset:     kubernetesClientset,
 		//TODO: don't call GetListers() 2 times
-		communityUpdater:        NewCommunityUpdater(kubernetesClientset.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List),
-		recorder:                recorder,
-		listers:                 informers.GetListers(),
-		nodeSynced:              informers.Node.Informer().HasSynced,
-		communitySettingsSynced: informers.CommunityConfiguration.Informer().HasSynced,
-		workqueue:               queue.NewQueue("CommunitySettingsQueue"),
+		communityUpdater:              NewCommunityUpdater(kubernetesClientset.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List),
+		recorder:                      recorder,
+		listers:                       informers.GetListers(),
+		nodeSynced:                    informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
+		workqueue:                     queue.NewQueue("CommunityConfigurationsQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when ServiceLevelAgreements resources change
 	informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleCommunitySettingsAdd,
-		UpdateFunc: controller.handleCommunitySettingsUpdate,
-		DeleteFunc: controller.handleCommunitySettingsDeletion,
+		AddFunc:    controller.handleCommunityConfigurationsAdd,
+		UpdateFunc: controller.handleCommunityConfigurationsUpdate,
+		DeleteFunc: controller.handleCommunityConfigurationsDeletion,
 	})
 
 	return controller
@@ -119,7 +119,7 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	if ok := cache.WaitForCacheSync(
 		stopCh,
-		c.communitySettingsSynced,
+		c.communityConfigurationsSynced,
 		c.nodeSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}

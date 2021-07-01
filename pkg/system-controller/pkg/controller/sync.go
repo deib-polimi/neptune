@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	// EmptyNodeList is the default error message when grouping cluster nodes
 	EmptyNodeList string = "there are no or too few ready nodes for building communities"
 )
 

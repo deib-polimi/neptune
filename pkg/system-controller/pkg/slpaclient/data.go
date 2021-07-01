@@ -12,6 +12,7 @@ type RequestSLPA struct {
 	DelayMatrix DelayMatrix    `json:"delay-matrix"`
 }
 
+// ParametersSLPA are the configuration parameters taken from the CommunityConfiguration
 type ParametersSLPA struct {
 	CommunitySize        int64 `json:"community-size"`
 	MaximumDelay         int32 `json:"maximum-delay"`

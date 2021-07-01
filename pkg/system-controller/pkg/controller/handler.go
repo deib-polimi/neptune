@@ -1,13 +1,13 @@
 package controller
 
-func (c *SystemController) handleCommunitySettingsAdd(new interface{}) {
+func (c *SystemController) handleCommunityConfigurationsAdd(new interface{}) {
 	c.workqueue.Enqueue(new)
 }
 
-func (c *SystemController) handleCommunitySettingsDeletion(old interface{}) {
+func (c *SystemController) handleCommunityConfigurationsDeletion(old interface{}) {
 	c.workqueue.Enqueue(old)
 }
 
-func (c *SystemController) handleCommunitySettingsUpdate(old, new interface{}) {
+func (c *SystemController) handleCommunityConfigurationsUpdate(old, new interface{}) {
 	c.workqueue.Enqueue(new)
 }
