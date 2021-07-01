@@ -16,6 +16,9 @@ import (
 const (
 	// EmptyNodeList is the default error message when grouping cluster nodes
 	EmptyNodeList string = "there are no or too few ready nodes for building communities"
+
+	// MasterNodeLabel is the label used by Kubernetes to specify the node running the control plane
+	MasterNodeLabel string = "node-role.kubernetes.io/master"
 )
 
 func (c *SystemController) syncCommunityConfiguration(key string) error {
@@ -106,6 +109,12 @@ func filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node, err error) {
 
 	for _, node := range nodes {
 		for _, condition := range node.Status.Conditions {
+
+			// don't consider master nodes for building communities
+			if _, isMaster := node.Labels[MasterNodeLabel]; isMaster {
+				continue
+			}
+
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 				result = append(result, node)
 			}

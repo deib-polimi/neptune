@@ -8,9 +8,28 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var masterNode = &corev1.Node{
+	ObjectMeta: v1.ObjectMeta{
+		Name: "master",
+		Labels: map[string]string{
+			MasterNodeLabel: "",
+		},
+	},
+	Status: corev1.NodeStatus{
+		Conditions: []corev1.NodeCondition{
+			{
+				Type:              corev1.NodeReady,
+				Status:            corev1.ConditionTrue,
+				LastHeartbeatTime: v1.Now(),
+			},
+		},
+	},
+}
+
 var readyNode = &corev1.Node{
 	ObjectMeta: v1.ObjectMeta{
-		Name: "node-1",
+		Name:   "node-1",
+		Labels: make(map[string]string),
 	},
 	Status: corev1.NodeStatus{
 		Conditions: []corev1.NodeCondition{
@@ -25,7 +44,8 @@ var readyNode = &corev1.Node{
 
 var notReadyNode = &corev1.Node{
 	ObjectMeta: v1.ObjectMeta{
-		Name: "node-2",
+		Name:   "node-2",
+		Labels: make(map[string]string),
 	},
 	Status: corev1.NodeStatus{
 		Conditions: []corev1.NodeCondition{
@@ -40,7 +60,8 @@ var notReadyNode = &corev1.Node{
 
 var unknownNode = &corev1.Node{
 	ObjectMeta: v1.ObjectMeta{
-		Name: "node-3",
+		Name:   "node-3",
+		Labels: make(map[string]string),
 	},
 	Status: corev1.NodeStatus{
 		Conditions: []corev1.NodeCondition{
@@ -63,6 +84,15 @@ func TestFilterReadyNodes(t *testing.T) {
 		{
 			description: "return all ready nodes",
 			input:       []*corev1.Node{readyNode},
+			desired:     []*corev1.Node{readyNode},
+			verifyFunc: func(desiredNodes []*corev1.Node, actualNodes []*corev1.Node, err error) {
+				require.Nil(t, err, "no errors should occur")
+				require.ElementsMatch(t, desiredNodes, actualNodes)
+			},
+		},
+		{
+			description: "return all ready nodes except master",
+			input:       []*corev1.Node{readyNode, masterNode},
 			desired:     []*corev1.Node{readyNode},
 			verifyFunc: func(desiredNodes []*corev1.Node, actualNodes []*corev1.Node, err error) {
 				require.Nil(t, err, "no errors should occur")
