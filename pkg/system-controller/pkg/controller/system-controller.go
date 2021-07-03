@@ -28,12 +28,6 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a podScale
 	// is synced successfully
 	MessageResourceSynced string = "Community Settings synced successfully"
-
-	// CommunityRoleLabel identifies a role of a node inside a community
-	CommunityRoleLabel string = "edgeautoscaler.polimi.it/role"
-
-	// CommunityLabel defines the community a node belongs to
-	CommunityLabel string = "edgeautoscaler.polimi.it/community"
 )
 
 // SystemController works at cluster level to divide the computational resources
@@ -47,7 +41,7 @@ type SystemController struct {
 	kubernetesClientset kubernetes.Interface
 
 	// slpaClient is used to interact with SLPA algorithm
-	slpaClient *slpaClient.Client
+	communityGetter slpaClient.CommunityGetter
 
 	// communityUpdater applies the output of SLPA to Kubernets Nodes
 	communityUpdater *CommunityUpdater

@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 
 	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
@@ -16,9 +17,6 @@ import (
 const (
 	// EmptyNodeList is the default error message when grouping cluster nodes
 	EmptyNodeList string = "there are no or too few ready nodes for building communities"
-
-	// MasterNodeLabel is the label used by Kubernetes to specify the node running the control plane
-	MasterNodeLabel string = "node-role.kubernetes.io/master"
 )
 
 func (c *SystemController) syncCommunityConfiguration(key string) error {
@@ -71,7 +69,7 @@ func (c *SystemController) ComputeCommunities(cc *eaapi.CommunityConfiguration) 
 	}
 
 	// send the request to SLPA and read results
-	return c.slpaClient.Communities(req)
+	return c.communityGetter.Communities(req)
 }
 
 func (c *SystemController) fetchSLPAData(cc *eaapi.CommunityConfiguration) (*slpaclient.RequestSLPA, error) {
@@ -97,7 +95,7 @@ func (c *SystemController) fetchSLPAData(cc *eaapi.CommunityConfiguration) (*slp
 		return nil, fmt.Errorf("error while retrieving node delays: %s", err)
 	}
 
-	c.slpaClient = slpaclient.NewClient(cc.Spec.SlpaService)
+	c.communityGetter = slpaclient.NewClient(cc.Spec.SlpaService)
 
 	request := slpaclient.NewRequestSLPA(cc, nodes, delays)
 
@@ -111,7 +109,7 @@ func filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node, err error) {
 		for _, condition := range node.Status.Conditions {
 
 			// don't consider master nodes for building communities
-			if _, isMaster := node.Labels[MasterNodeLabel]; isMaster {
+			if _, isMaster := node.Labels[ealabels.MasterNodeLabel]; isMaster {
 				continue
 			}
 
