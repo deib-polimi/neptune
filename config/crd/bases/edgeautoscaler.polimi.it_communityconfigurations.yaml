@@ -35,27 +35,37 @@ spec:
           metadata:
             type: object
           spec:
+            description: CommunityConfigurationSpec is the spec for a CommunityConfiguration
+              CRD
             properties:
               community-size:
+                description: CommunitySize is the upper bound on the community size
                 format: int64
                 type: integer
               iterations:
                 default: 20
+                description: Iterations specifies how many times the speaking process
+                  occurs in SLPA
                 format: int64
                 type: integer
               maximum-delay:
+                description: MaximumDelay is the upper bound for the delay inside
+                  a community measured in milliseconds
                 format: int32
                 maximum: 100
                 minimum: 0
                 type: integer
               probability-threshold:
                 default: 30
+                description: ProbabilityThreshold is the lower bound to accept labels
+                  in SLPA algorithm. It is a percentage
                 format: int32
                 maximum: 100
                 minimum: 0
                 type: integer
               slpa-service:
                 default: slpa-rest
+                description: SlpaService is the service:port offering the SLPA algorithm
                 type: string
             type: object
         required:

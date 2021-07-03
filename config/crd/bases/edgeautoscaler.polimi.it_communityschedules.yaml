@@ -19,6 +19,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: CommunitySchedule wraps the rules to route traffic inside a community
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,6 +34,7 @@ spec:
           metadata:
             type: object
           spec:
+            description: CommunityScheduleSpec is the spec for a CommunitySchedule
             type: object
         required:
         - spec

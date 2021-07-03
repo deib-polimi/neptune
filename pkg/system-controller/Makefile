@@ -1,7 +1,7 @@
 BUILD_SETTINGS = CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 IMAGE = system-controller
 # IMAGE_VERSION = $(shell git tag --points-at HEAD | sed '/$(IMAGE)\/.*/!s/.*//' | sed 's/\//:/')
-IMAGE_VERSION = 0.0.1
+IMAGE_VERSION = 0.0.2
 REPO = systemautoscaler
 
 
@@ -16,10 +16,10 @@ fmt:
 	@go fmt ./...
 
 test:
-	@go test -race $(shell go list ./... | grep -v e2e) --coverprofile=coverage.out
+	@go test -race -v $(shell go list ./... | grep -v e2e) --coverprofile=coverage.out
 
-e2e:
-	@go test -race $(shell go list ./... | grep e2e)
+e2e: test
+	@go test -race -v $(shell go list ./... | grep e2e)
 
 coverage: test
 	@go tool cover -func=coverage.out
