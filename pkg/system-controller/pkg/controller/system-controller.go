@@ -41,7 +41,7 @@ type SystemController struct {
 	kubernetesClientset kubernetes.Interface
 
 	// slpaClient is used to interact with SLPA algorithm
-	communityGetter slpaClient.CommunityGetter
+	communityGetter slpaClient.ClientCommunityGetter
 
 	// communityUpdater applies the output of SLPA to Kubernets Nodes
 	communityUpdater *CommunityUpdater
@@ -64,6 +64,8 @@ func NewController(
 	kubernetesClientset *kubernetes.Clientset,
 	eaClientSet eaclientset.Interface,
 	informers informers.Informers,
+	communityUpdater *CommunityUpdater,
+	communityGetter slpaClient.ClientCommunityGetter,
 ) *SystemController {
 
 	// Create event broadcaster
@@ -80,7 +82,8 @@ func NewController(
 		edgeAutoscalerClientSet: eaClientSet,
 		kubernetesClientset:     kubernetesClientset,
 		//TODO: don't call GetListers() 2 times
-		communityUpdater:              NewCommunityUpdater(kubernetesClientset.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List),
+		communityUpdater:              communityUpdater,
+		communityGetter:               communityGetter,
 		recorder:                      recorder,
 		listers:                       informers.GetListers(),
 		nodeSynced:                    informers.Node.Informer().HasSynced,

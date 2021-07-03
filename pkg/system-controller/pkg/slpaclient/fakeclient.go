@@ -2,12 +2,14 @@ package slpaclient
 
 import (
 	"fmt"
+	"math"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 )
 
 // FakeClient mocks the request and responses sent to SLPA
 type FakeClient struct {
+	Host string
 }
 
 // NewFakeClient returns a new FakeClient
@@ -18,7 +20,8 @@ func NewFakeClient() *FakeClient {
 // Communities returns a fake set of communities
 func (fc *FakeClient) Communities(req *RequestSLPA) (result []Community, err error) {
 	err = nil
-	communities := (len(req.Hosts) / int(req.Parameters.CommunitySize)) + 1
+	hostSize := float64(len(req.Hosts))
+	communities := int(math.Ceil(hostSize / float64(req.Parameters.CommunitySize)))
 
 	for i := 0; i < communities; i++ {
 		result = append(result, Community{
@@ -45,4 +48,9 @@ func (fc *FakeClient) Communities(req *RequestSLPA) (result []Community, err err
 	}
 
 	return result, err
+}
+
+// SetHost sets the host
+func (fc *FakeClient) SetHost(host string) {
+	fc.Host = host
 }

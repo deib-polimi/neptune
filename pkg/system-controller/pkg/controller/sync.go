@@ -95,7 +95,7 @@ func (c *SystemController) fetchSLPAData(cc *eaapi.CommunityConfiguration) (*slp
 		return nil, fmt.Errorf("error while retrieving node delays: %s", err)
 	}
 
-	c.communityGetter = slpaclient.NewClient(cc.Spec.SlpaService)
+	c.communityGetter.SetHost(cc.Spec.SlpaService)
 
 	request := slpaclient.NewRequestSLPA(cc, nodes, delays)
 

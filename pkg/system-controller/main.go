@@ -9,6 +9,7 @@ import (
 	informers2 "github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
 	syscontroller "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/controller"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -54,11 +55,18 @@ func main() {
 		CommunityConfiguration: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
 	}
 
+	communityUpdater := syscontroller.NewCommunityUpdater(kubernetesClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List)
+
+	communityGetter := slpaclient.NewClient()
+
 	systemController := syscontroller.NewController(
 		kubernetesClient,
 		eaclient,
 		informers,
+		communityUpdater,
+		communityGetter,
 	)
+
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
 	// Start method is non-blocking and runs all registered sainformers in a dedicated goroutine.
 	eaInformerFactory.Start(stopCh)

@@ -20,6 +20,13 @@ const (
 // Path represents the REST paths offered by the SLPA microservice
 type Path string
 
+// ClientCommunityGetter wraps CommunityGettere interface and offers a
+// function to set the host
+type ClientCommunityGetter interface {
+	CommunityGetter
+	SetHost(host string)
+}
+
 // CommunityGetter is the standard interface to retrieve communities
 type CommunityGetter interface {
 	Communities(req *RequestSLPA) ([]Community, error)
@@ -36,7 +43,7 @@ func (p Path) string() string {
 }
 
 // NewClient returns a new MetricClient representing a metric client.
-func NewClient(host string) *Client {
+func NewClient() *Client {
 	httpClient := http.Client{
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
@@ -51,9 +58,13 @@ func NewClient(host string) *Client {
 	}
 	client := &Client{
 		httpClient: httpClient,
-		Host:       host,
 	}
 	return client
+}
+
+// SetHost set the hosst
+func (c *Client) SetHost(host string) {
+	c.Host = host
 }
 
 // Communities returns the results of SLPA algorithm
