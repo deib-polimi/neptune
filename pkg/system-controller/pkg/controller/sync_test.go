@@ -3,6 +3,8 @@ package controller
 import (
 	"testing"
 
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +14,7 @@ var masterNode = &corev1.Node{
 	ObjectMeta: v1.ObjectMeta{
 		Name: "master",
 		Labels: map[string]string{
-			MasterNodeLabel: "",
+			ealabels.MasterNodeLabel: "",
 		},
 	},
 	Status: corev1.NodeStatus{

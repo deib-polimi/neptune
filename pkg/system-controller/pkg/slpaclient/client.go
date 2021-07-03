@@ -12,19 +12,24 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	// Communities is the path that starts SLPA algorithm
+	Communities Path = "/api/communities"
+)
+
+// Path represents the REST paths offered by the SLPA microservice
+type Path string
+
+// CommunityGetter is the standard interface to retrieve communities
+type CommunityGetter interface {
+	Communities(req *RequestSLPA) ([]Community, error)
+}
+
 // Client is used to interact with SLPA algorithm
 type Client struct {
 	Host       string
 	httpClient http.Client
 }
-
-// Path represents the REST paths offered by the SLPA microservice
-type Path string
-
-const (
-	// Communities is the path that starts SLPA algorithm
-	Communities Path = "/api/communities"
-)
 
 func (p Path) string() string {
 	return string(p)
@@ -80,7 +85,7 @@ func (c *Client) sendRequest(req *RequestSLPA, p Path) ([]byte, error) {
 
 	path := p.string()
 
-	// Create the request
+	//Create the request
 	slpaServerURL := url.URL{
 		Scheme: "http",
 		Host:   c.Host,

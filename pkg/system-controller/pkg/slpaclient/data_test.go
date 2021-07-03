@@ -9,12 +9,44 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var cc = &eaapi.CommunityConfiguration{
+	TypeMeta: v1.TypeMeta{
+		Kind:       "CommunityConfiguration",
+		APIVersion: eaapi.SchemeGroupVersion.Identifier(),
+	},
+	Spec: communityConfigSpec,
+}
+
+var delays = [][]int32{
+	{0, 2, 2},
+	{2, 0, 2},
+	{2, 2, 0},
+}
+
 var communityConfigSpec = eaapi.CommunityConfigurationSpec{
 	SlpaService:          "foo.bar",
 	CommunitySize:        2,
 	MaximumDelay:         40,
 	ProbabilityThreshold: 50,
 	Iterations:           20,
+}
+
+var nodes = []*corev1.Node{
+	{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "node-1",
+		},
+	},
+	{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "node-2",
+		},
+	},
+	{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "node-3",
+		},
+	},
 }
 
 func TestNewRequestSLPA(t *testing.T) {
@@ -30,28 +62,8 @@ func TestNewRequestSLPA(t *testing.T) {
 			inputCC: &eaapi.CommunityConfiguration{
 				Spec: communityConfigSpec,
 			},
-			inputNodes: []*corev1.Node{
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Name: "node-1",
-					},
-				},
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Name: "node-2",
-					},
-				},
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Name: "node-3",
-					},
-				},
-			},
-			inputDelays: [][]int32{
-				{0, 2, 2},
-				{2, 0, 2},
-				{2, 2, 0},
-			},
+			inputNodes:  nodes,
+			inputDelays: delays,
 			desired: &RequestSLPA{
 				Parameters: ParametersSLPA{
 					CommunitySize:        communityConfigSpec.CommunitySize,

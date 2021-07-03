@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,12 +63,12 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 
 			labels := node.GetLabels()
 
-			if comm, ok := labels[CommunityLabel]; !ok || comm != community.Name {
-				labels[CommunityLabel] = community.Name
+			if comm, ok := labels[ealabels.CommunityLabel]; !ok || comm != community.Name {
+				labels[ealabels.CommunityLabel] = community.Name
 			}
 
-			if role, ok := labels[CommunityRoleLabel]; !ok || role != member.Labels[CommunityRoleLabel] {
-				labels[CommunityRoleLabel] = member.Labels[CommunityRoleLabel].(string)
+			if role, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.String()] {
+				labels[ealabels.CommunityRoleLabel.String()] = member.Labels[ealabels.CommunityRoleLabel.String()].(string)
 			}
 
 			_, err := c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
@@ -87,17 +89,17 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 	for _, node := range nodeMap {
 		labels := node.GetLabels()
 
-		if _, ok := labels[CommunityLabel]; !ok {
+		if _, ok := labels[ealabels.CommunityLabel]; !ok {
 			continue
 		}
 
-		delete(labels, CommunityLabel)
+		delete(labels, ealabels.CommunityLabel)
 
-		if _, ok := labels[CommunityRoleLabel]; !ok {
+		if _, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok {
 			continue
 		}
 
-		delete(labels, CommunityRoleLabel)
+		delete(labels, ealabels.CommunityRoleLabel.String())
 
 		_, err := c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -14,16 +15,16 @@ import (
 var resultObjectMeta = v1.ObjectMeta{
 	Name: "node-1",
 	Labels: map[string]string{
-		CommunityRoleLabel: "LEADER",
-		CommunityLabel:     "community-1",
+		ealabels.CommunityRoleLabel.String(): "LEADER",
+		ealabels.CommunityLabel:              "community-1",
 	},
 }
 
 var notInCommunityMeta = v1.ObjectMeta{
 	Name: "node-4",
 	Labels: map[string]string{
-		CommunityRoleLabel: "MEMBER",
-		CommunityLabel:     "community-2",
+		ealabels.CommunityRoleLabel.String(): "MEMBER",
+		ealabels.CommunityLabel:              "community-2",
 	},
 }
 
@@ -58,8 +59,8 @@ func listNodeWithDifferentLabel(selector labels.Selector) (ret []*corev1.Node, e
 			ObjectMeta: v1.ObjectMeta{
 				Name: "node-1",
 				Labels: map[string]string{
-					CommunityRoleLabel: "MEMBER",
-					CommunityLabel:     "community-2",
+					ealabels.CommunityRoleLabel.String(): "MEMBER",
+					ealabels.CommunityLabel:              "community-2",
 				},
 			},
 		},
@@ -93,7 +94,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								CommunityRoleLabel: "LEADER",
+								ealabels.CommunityRoleLabel.String(): "LEADER",
 							},
 						},
 					},
@@ -117,7 +118,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								CommunityRoleLabel: "LEADER",
+								ealabels.CommunityRoleLabel.String(): "LEADER",
 							},
 						},
 					},
@@ -141,7 +142,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								CommunityRoleLabel: "LEADER",
+								ealabels.CommunityRoleLabel.String(): "LEADER",
 							},
 						},
 					},
@@ -165,7 +166,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								CommunityRoleLabel: "LEADER",
+								ealabels.CommunityRoleLabel.String(): "LEADER",
 							},
 						},
 					},
