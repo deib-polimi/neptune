@@ -113,3 +113,31 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 
 	return nil
 }
+
+// ClearNodes removes the labels from nodes
+func (c *CommunityUpdater) ClearNodes() error {
+	clusterNodes, err := c.listFunc(labels.Everything())
+
+	if err != nil {
+		return err
+	}
+
+	for _, node := range clusterNodes {
+		if _, ok := node.Labels[ealabels.CommunityLabel]; ok {
+			delete(node.Labels, ealabels.CommunityLabel)
+		}
+
+		if _, ok := node.Labels[ealabels.CommunityRoleLabel.String()]; ok {
+			delete(node.Labels, ealabels.CommunityRoleLabel.String())
+		}
+
+		_, err = c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
+
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("Error while deleting label from node Node %s: %s", node.Name, err))
+			return err
+		}
+	}
+
+	return nil
+}

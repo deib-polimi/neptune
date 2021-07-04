@@ -5,6 +5,7 @@ import (
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
@@ -36,6 +37,9 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 		// The CC resource may no longer exist, so we stop processing.
 		if errors.IsNotFound(err) {
 			utilruntime.HandleError(fmt.Errorf("CommunityConfiguraton '%s' in work queue no longer exists", key))
+
+			klog.Info("Clearing nodes' labels")
+			c.communityUpdater.ClearNodes()
 			return nil
 		}
 		return err

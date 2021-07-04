@@ -97,15 +97,46 @@ var _ = Describe("System Controller", func() {
 						}
 					}
 
-					Expect(hasLeader).To(BeTrue())
+					if !hasLeader {
+						return false
+					}
 				}
 
 				return true
 
 			}, timeout, interval).Should(BeTrue())
+		})
 
+		It("Removes the labels when the CommunityConfiguration does not exist anymore", func() {
 			err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations().Delete(ctx, cc.Name, metav1.DeleteOptions{})
 			Expect(err).ShouldNot(HaveOccurred())
+
+			Eventually(func() bool {
+				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				var communityLabelExists bool
+				var communityRoleLabelExists bool
+
+				for _, node := range nodes.Items {
+					labels := node.Labels
+
+					// the master node is the only one that doesn't belong to a community
+					if _, isMasterNode := labels[ealabels.MasterNodeLabel]; isMasterNode {
+						continue
+					}
+
+					_, communityLabelExists = node.Labels[ealabels.CommunityLabel]
+					_, communityRoleLabelExists = node.Labels[ealabels.CommunityRoleLabel.String()]
+
+					if communityLabelExists || communityRoleLabelExists {
+						return false
+					}
+				}
+
+				return true
+
+			}, timeout, interval).Should(BeTrue())
 
 		})
 	})
