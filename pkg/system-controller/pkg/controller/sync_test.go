@@ -117,7 +117,7 @@ func TestFilterReadyNodes(t *testing.T) {
 			input:       []*corev1.Node{unknownNode, notReadyNode},
 			desired:     []*corev1.Node{},
 			verifyFunc: func(desiredNodes []*corev1.Node, actualNodes []*corev1.Node, err error) {
-				require.Equal(t, err.Error(), EmptyNodeList)
+				require.Equal(t, err.Error(), EmptyNodeListError)
 				require.Empty(t, actualNodes)
 				require.NotContains(t, actualNodes, unknownNode)
 				require.NotContains(t, actualNodes, notReadyNode)

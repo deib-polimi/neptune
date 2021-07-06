@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	// EmptyNodeList is the default error message when grouping cluster nodes
-	EmptyNodeList string = "there are no or too few ready nodes for building communities"
+	// EmptyNodeListError is the default error message when grouping cluster nodes
+	EmptyNodeListError string = "there are no or too few ready nodes for building communities"
 )
 
 func (c *SystemController) syncCommunityConfiguration(key string) error {
@@ -124,7 +124,7 @@ func filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node, err error) {
 	}
 
 	if len(result) < 1 {
-		return result, fmt.Errorf(EmptyNodeList)
+		return result, fmt.Errorf(EmptyNodeListError)
 	}
 
 	return result, nil
@@ -140,14 +140,14 @@ func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]int32
 
 	// TODO: refactor once delay discovery implemented
 	err = nil
-	for firstNode := range nodes {
-		for secondNode := range nodes {
+	for source := range nodes {
+		for destination := range nodes {
 			value := 2
 
-			if firstNode == secondNode {
+			if source == destination {
 				value = 0
 			}
-			delays[firstNode][secondNode] = int32(value)
+			delays[source][destination] = int32(value)
 		}
 	}
 

@@ -79,9 +79,8 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &SystemController{
-		edgeAutoscalerClientSet: eaClientSet,
-		kubernetesClientset:     kubernetesClientset,
-		//TODO: don't call GetListers() 2 times
+		edgeAutoscalerClientSet:       eaClientSet,
+		kubernetesClientset:           kubernetesClientset,
 		communityUpdater:              communityUpdater,
 		communityGetter:               communityGetter,
 		recorder:                      recorder,
