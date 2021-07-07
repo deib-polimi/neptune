@@ -9,7 +9,7 @@ endif
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-.PHONY: all build coverage clean manifests test
+.PHONY: all build cluster clean coverage controller-gen e2e fmt install install-crds install-rbac manifests release test vet
 
 all: build coverage clean manifests test
 
@@ -25,9 +25,27 @@ clean:
 test:
 	$(call action, test)
 
+install: install-crds install-rbac
+
+install-crds: manifests
+	@echo "install CRDs manifests"
+	@kubectl apply -f config/crd/bases
+
+install-rbac:
+	@echo "install RBAC"
+	@kubectl apply -f config/permissions
+
+e2e: install
+	@echo "run e2e tests"
+	@kubectl apply -f ./config/cluster-conf/e2e-namespace.yaml
+	$(call action, e2e)
+	@kubectl delete -f ./config/cluster-conf/e2e-namespace.yaml
+
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=edgeautoscaler-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=edgeautoscaler-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases crd:crdVersions={v1}
+	@rm config/edgeautoscaler.polimi.it_communityschedules.yaml
+	@rm config/edgeautoscaler.polimi.it_communityconfigurations.yaml
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
