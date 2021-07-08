@@ -25,7 +25,7 @@ const (
 	// SuccessSynced is used as part of the Event 'reason' when a podScale is synced
 	SuccessSynced string = "Synced"
 
-	// MessageResourceSynced is the message used for an Event fired when a podScale
+	// MessageResourceSynced is the message used for an Event fired when a community configuration
 	// is synced successfully
 	MessageResourceSynced string = "Community Settings synced successfully"
 )
@@ -99,9 +99,9 @@ func NewController(
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when ServiceLevelAgreements resources change
 	informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleCommunityConfigurationsAdd,
-		UpdateFunc: controller.handleCommunityConfigurationsUpdate,
-		DeleteFunc: controller.handleCommunityConfigurationsDeletion,
+		AddFunc:    controller.workqueue.Add,
+		UpdateFunc: controller.workqueue.Update,
+		DeleteFunc: controller.workqueue.Deletion,
 	})
 	informers.Deployment.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.handleDeploymentAdd,

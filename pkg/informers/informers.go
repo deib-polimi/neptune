@@ -12,6 +12,7 @@ import (
 )
 
 type Informers struct {
+	ConfigMap              coreinformers.ConfigMapInformer
 	Pod                    coreinformers.PodInformer
 	Node                   coreinformers.NodeInformer
 	Service                coreinformers.ServiceInformer
@@ -23,6 +24,7 @@ type Informers struct {
 
 func (i *Informers) GetListers() Listers {
 	return Listers{
+		i.ConfigMap.Lister(),
 		i.Pod.Lister(),
 		i.Node.Lister(),
 		i.Service.Lister(),
@@ -34,6 +36,7 @@ func (i *Informers) GetListers() Listers {
 }
 
 type Listers struct {
+	corelisters.ConfigMapLister
 	corelisters.PodLister
 	corelisters.NodeLister
 	corelisters.ServiceLister
