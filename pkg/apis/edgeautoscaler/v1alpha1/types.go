@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -78,7 +79,7 @@ type CommunityScheduleSpec struct {
 	Allocations CommunityFunctionAllocation `json:"allocations"`
 }
 
-type CommunityFunctionRoutingRule map[string]int
+type CommunityFunctionRoutingRule map[string]resource.Quantity
 type CommunityDestinationRoutingRule map[string]CommunityFunctionRoutingRule
 type CommunitySourceRoutingRule map[string]CommunityDestinationRoutingRule
 

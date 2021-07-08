@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	openfaasv1 "github.com/openfaas/openfaas-operator/pkg/apis/openfaas/v1"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
@@ -31,10 +30,10 @@ type SchedulingInput struct {
 }
 
 type SchedulingOutput struct {
-	NodeNames     []string                               `json:"node_names"`
-	FunctionNames []string                               `json:"function_names"`
-	RoutingRules  eav1alpha1.CommunitySourceRoutingRule  `json:"routing_rules"`
-	Allocations   eav1alpha1.CommunityFunctionAllocation `json:"allocations"`
+	NodeNames     []string                                 `json:"node_names"`
+	FunctionNames []string                                 `json:"function_names"`
+	RoutingRules  map[string]map[string]map[string]float64 `json:"routing_rules"`
+	Allocations   map[string]map[string]bool               `json:"allocations"`
 }
 
 type Scheduler struct {
