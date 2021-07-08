@@ -27,7 +27,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // CommunityConfigurations returns a CommunityConfigurationInformer.
 func (v *version) CommunityConfigurations() CommunityConfigurationInformer {
-	return &communityConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &communityConfigurationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // CommunitySchedules returns a CommunityScheduleInformer.
