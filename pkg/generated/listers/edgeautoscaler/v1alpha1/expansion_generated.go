@@ -6,6 +6,10 @@ package v1alpha1
 // CommunityConfigurationLister.
 type CommunityConfigurationListerExpansion interface{}
 
+// CommunityConfigurationNamespaceListerExpansion allows custom methods to be added to
+// CommunityConfigurationNamespaceLister.
+type CommunityConfigurationNamespaceListerExpansion interface{}
+
 // CommunityScheduleListerExpansion allows custom methods to be added to
 // CommunityScheduleLister.
 type CommunityScheduleListerExpansion interface{}

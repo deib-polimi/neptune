@@ -16,14 +16,15 @@ import (
 
 const namespace = "e2e"
 const slpaNamespace = "kube-system"
-const timeout = 400 * time.Second
+const timeout = 1 * time.Minute
 const interval = 10 * time.Second
 
 const slpaName = "slpa-algorithm"
 
 var cc = &eaapi.CommunityConfiguration{
 	ObjectMeta: metav1.ObjectMeta{
-		Name: "example-slpa",
+		Name:      "example-slpa",
+		Namespace: namespace,
 	},
 	TypeMeta: metav1.TypeMeta{
 		Kind:       "CommunityConfiguration",
@@ -45,9 +46,26 @@ var _ = Describe("System Controller", func() {
 
 		ctx := context.Background()
 
-		It("Assign labels to worker nodes", func() {
+		It("Wait for worker nodes to become ready", func() {
 
-			_, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations().Create(ctx, cc, metav1.CreateOptions{})
+			// wait for nodes to become ready
+			Eventually(func() bool {
+				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				for _, node := range nodes.Items {
+					for _, condition := range node.Status.Conditions {
+						if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionFalse {
+							return false
+						}
+					}
+				}
+
+				return true
+
+			}, 6*timeout, interval).Should(BeTrue())
+
+			_, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Create(ctx, cc, metav1.CreateOptions{})
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Eventually(func() bool {
@@ -108,7 +126,7 @@ var _ = Describe("System Controller", func() {
 		})
 
 		It("Removes the labels when the CommunityConfiguration does not exist anymore", func() {
-			err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations().Delete(ctx, cc.Name, metav1.DeleteOptions{})
+			err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Delete(ctx, cc.Name, metav1.DeleteOptions{})
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Eventually(func() bool {

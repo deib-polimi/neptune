@@ -17,7 +17,7 @@ import (
 // CommunityConfigurationsGetter has a method to return a CommunityConfigurationInterface.
 // A group's client should implement this interface.
 type CommunityConfigurationsGetter interface {
-	CommunityConfigurations() CommunityConfigurationInterface
+	CommunityConfigurations(namespace string) CommunityConfigurationInterface
 }
 
 // CommunityConfigurationInterface has methods to work with CommunityConfiguration resources.
@@ -36,12 +36,14 @@ type CommunityConfigurationInterface interface {
 // communityConfigurations implements CommunityConfigurationInterface
 type communityConfigurations struct {
 	client rest.Interface
+	ns     string
 }
 
 // newCommunityConfigurations returns a CommunityConfigurations
-func newCommunityConfigurations(c *EdgeautoscalerV1alpha1Client) *communityConfigurations {
+func newCommunityConfigurations(c *EdgeautoscalerV1alpha1Client, namespace string) *communityConfigurations {
 	return &communityConfigurations{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -49,6 +51,7 @@ func newCommunityConfigurations(c *EdgeautoscalerV1alpha1Client) *communityConfi
 func (c *communityConfigurations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	result = &v1alpha1.CommunityConfiguration{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -65,6 +68,7 @@ func (c *communityConfigurations) List(ctx context.Context, opts v1.ListOptions)
 	}
 	result = &v1alpha1.CommunityConfigurationList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -81,6 +85,7 @@ func (c *communityConfigurations) Watch(ctx context.Context, opts v1.ListOptions
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -91,6 +96,7 @@ func (c *communityConfigurations) Watch(ctx context.Context, opts v1.ListOptions
 func (c *communityConfigurations) Create(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.CreateOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	result = &v1alpha1.CommunityConfiguration{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(communityConfiguration).
@@ -103,6 +109,7 @@ func (c *communityConfigurations) Create(ctx context.Context, communityConfigura
 func (c *communityConfigurations) Update(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	result = &v1alpha1.CommunityConfiguration{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		Name(communityConfiguration.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -115,6 +122,7 @@ func (c *communityConfigurations) Update(ctx context.Context, communityConfigura
 // Delete takes name of the communityConfiguration and deletes it. Returns an error if one occurs.
 func (c *communityConfigurations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		Name(name).
 		Body(&opts).
@@ -129,6 +137,7 @@ func (c *communityConfigurations) DeleteCollection(ctx context.Context, opts v1.
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -141,6 +150,7 @@ func (c *communityConfigurations) DeleteCollection(ctx context.Context, opts v1.
 func (c *communityConfigurations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CommunityConfiguration, err error) {
 	result = &v1alpha1.CommunityConfiguration{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("communityconfigurations").
 		Name(name).
 		SubResource(subresources...).

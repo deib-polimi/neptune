@@ -22,7 +22,7 @@ const (
 
 func (c *SystemController) syncCommunityConfiguration(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
-	_, name, err := cache.SplitMetaNamespaceKey(key)
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
@@ -30,7 +30,7 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 	}
 
 	// Get the CC resource with this namespace/name
-	cc, err := c.listers.CommunityConfigurationLister.Get(name)
+	cc, err := c.listers.CommunityConfigurationLister.CommunityConfigurations(namespace).Get(name)
 
 	//TODO: handle multiple Community Settings in cluster. Now there should be ONLY one configuration per cluster
 	if err != nil {

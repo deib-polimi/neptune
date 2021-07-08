@@ -19,8 +19,8 @@ type EdgeautoscalerV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *EdgeautoscalerV1alpha1Client) CommunityConfigurations() CommunityConfigurationInterface {
-	return newCommunityConfigurations(c)
+func (c *EdgeautoscalerV1alpha1Client) CommunityConfigurations(namespace string) CommunityConfigurationInterface {
+	return newCommunityConfigurations(c, namespace)
 }
 
 func (c *EdgeautoscalerV1alpha1Client) CommunitySchedules(namespace string) CommunityScheduleInterface {

@@ -15,9 +15,8 @@ type CommunityConfigurationLister interface {
 	// List lists all CommunityConfigurations in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.CommunityConfiguration, err error)
-	// Get retrieves the CommunityConfiguration from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.CommunityConfiguration, error)
+	// CommunityConfigurations returns an object that can list and get CommunityConfigurations.
+	CommunityConfigurations(namespace string) CommunityConfigurationNamespaceLister
 	CommunityConfigurationListerExpansion
 }
 
@@ -39,9 +38,41 @@ func (s *communityConfigurationLister) List(selector labels.Selector) (ret []*v1
 	return ret, err
 }
 
-// Get retrieves the CommunityConfiguration from the index for a given name.
-func (s *communityConfigurationLister) Get(name string) (*v1alpha1.CommunityConfiguration, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// CommunityConfigurations returns an object that can list and get CommunityConfigurations.
+func (s *communityConfigurationLister) CommunityConfigurations(namespace string) CommunityConfigurationNamespaceLister {
+	return communityConfigurationNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// CommunityConfigurationNamespaceLister helps list and get CommunityConfigurations.
+// All objects returned here must be treated as read-only.
+type CommunityConfigurationNamespaceLister interface {
+	// List lists all CommunityConfigurations in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1alpha1.CommunityConfiguration, err error)
+	// Get retrieves the CommunityConfiguration from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1alpha1.CommunityConfiguration, error)
+	CommunityConfigurationNamespaceListerExpansion
+}
+
+// communityConfigurationNamespaceLister implements the CommunityConfigurationNamespaceLister
+// interface.
+type communityConfigurationNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all CommunityConfigurations in the indexer for a given namespace.
+func (s communityConfigurationNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CommunityConfiguration, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.CommunityConfiguration))
+	})
+	return ret, err
+}
+
+// Get retrieves the CommunityConfiguration from the indexer for a given namespace and name.
+func (s communityConfigurationNamespaceLister) Get(name string) (*v1alpha1.CommunityConfiguration, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

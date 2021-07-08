@@ -12,8 +12,8 @@ type FakeEdgeautoscalerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeEdgeautoscalerV1alpha1) CommunityConfigurations() v1alpha1.CommunityConfigurationInterface {
-	return &FakeCommunityConfigurations{c}
+func (c *FakeEdgeautoscalerV1alpha1) CommunityConfigurations(namespace string) v1alpha1.CommunityConfigurationInterface {
+	return &FakeCommunityConfigurations{c, namespace}
 }
 
 func (c *FakeEdgeautoscalerV1alpha1) CommunitySchedules(namespace string) v1alpha1.CommunityScheduleInterface {
