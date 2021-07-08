@@ -24,6 +24,7 @@ type CommunityConfigurationsGetter interface {
 type CommunityConfigurationInterface interface {
 	Create(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.CreateOptions) (*v1alpha1.CommunityConfiguration, error)
 	Update(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*v1alpha1.CommunityConfiguration, error)
+	UpdateStatus(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*v1alpha1.CommunityConfiguration, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CommunityConfiguration, error)
@@ -112,6 +113,22 @@ func (c *communityConfigurations) Update(ctx context.Context, communityConfigura
 		Namespace(c.ns).
 		Resource("communityconfigurations").
 		Name(communityConfiguration.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(communityConfiguration).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *communityConfigurations) UpdateStatus(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (result *v1alpha1.CommunityConfiguration, err error) {
+	result = &v1alpha1.CommunityConfiguration{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("communityconfigurations").
+		Name(communityConfiguration.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(communityConfiguration).
 		Do(ctx).
