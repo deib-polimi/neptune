@@ -37,10 +37,10 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=edgeautoscaler.polimi.it, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("communityconfigurations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Edgeautoscaler().V1alpha1().CommunityConfigurations().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("communityschedules"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Edgeautoscaler().V1alpha1().CommunitySchedules().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("communitysettingses"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Edgeautoscaler().V1alpha1().CommunitySettingses().Informer()}, nil
 
 	}
 
