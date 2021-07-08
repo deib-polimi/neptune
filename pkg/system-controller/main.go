@@ -4,7 +4,7 @@ import (
 	"flag"
 	"time"
 
-	clientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
+	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eainformers "github.com/lterrac/edge-autoscaler/pkg/generated/informers/externalversions"
 	informers2 "github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
@@ -33,7 +33,7 @@ func main() {
 		klog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
 
-	eaclient, err := clientset.NewForConfig(cfg)
+	eaclient, err := eaclientset.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}

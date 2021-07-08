@@ -17,6 +17,7 @@ import (
 // FakeCommunityConfigurations implements CommunityConfigurationInterface
 type FakeCommunityConfigurations struct {
 	Fake *FakeEdgeautoscalerV1alpha1
+	ns   string
 }
 
 var communityconfigurationsResource = schema.GroupVersionResource{Group: "edgeautoscaler.polimi.it", Version: "v1alpha1", Resource: "communityconfigurations"}
@@ -26,7 +27,8 @@ var communityconfigurationsKind = schema.GroupVersionKind{Group: "edgeautoscaler
 // Get takes name of the communityConfiguration, and returns the corresponding communityConfiguration object, and an error if there is any.
 func (c *FakeCommunityConfigurations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(communityconfigurationsResource, name), &v1alpha1.CommunityConfiguration{})
+		Invokes(testing.NewGetAction(communityconfigurationsResource, c.ns, name), &v1alpha1.CommunityConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -36,7 +38,8 @@ func (c *FakeCommunityConfigurations) Get(ctx context.Context, name string, opti
 // List takes label and field selectors, and returns the list of CommunityConfigurations that match those selectors.
 func (c *FakeCommunityConfigurations) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.CommunityConfigurationList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(communityconfigurationsResource, communityconfigurationsKind, opts), &v1alpha1.CommunityConfigurationList{})
+		Invokes(testing.NewListAction(communityconfigurationsResource, communityconfigurationsKind, c.ns, opts), &v1alpha1.CommunityConfigurationList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -57,13 +60,15 @@ func (c *FakeCommunityConfigurations) List(ctx context.Context, opts v1.ListOpti
 // Watch returns a watch.Interface that watches the requested communityConfigurations.
 func (c *FakeCommunityConfigurations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(communityconfigurationsResource, opts))
+		InvokesWatch(testing.NewWatchAction(communityconfigurationsResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a communityConfiguration and creates it.  Returns the server's representation of the communityConfiguration, and an error, if there is any.
 func (c *FakeCommunityConfigurations) Create(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.CreateOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(communityconfigurationsResource, communityConfiguration), &v1alpha1.CommunityConfiguration{})
+		Invokes(testing.NewCreateAction(communityconfigurationsResource, c.ns, communityConfiguration), &v1alpha1.CommunityConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -73,7 +78,8 @@ func (c *FakeCommunityConfigurations) Create(ctx context.Context, communityConfi
 // Update takes the representation of a communityConfiguration and updates it. Returns the server's representation of the communityConfiguration, and an error, if there is any.
 func (c *FakeCommunityConfigurations) Update(ctx context.Context, communityConfiguration *v1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (result *v1alpha1.CommunityConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(communityconfigurationsResource, communityConfiguration), &v1alpha1.CommunityConfiguration{})
+		Invokes(testing.NewUpdateAction(communityconfigurationsResource, c.ns, communityConfiguration), &v1alpha1.CommunityConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -83,13 +89,14 @@ func (c *FakeCommunityConfigurations) Update(ctx context.Context, communityConfi
 // Delete takes name of the communityConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeCommunityConfigurations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(communityconfigurationsResource, name), &v1alpha1.CommunityConfiguration{})
+		Invokes(testing.NewDeleteAction(communityconfigurationsResource, c.ns, name), &v1alpha1.CommunityConfiguration{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCommunityConfigurations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(communityconfigurationsResource, listOpts)
+	action := testing.NewDeleteCollectionAction(communityconfigurationsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.CommunityConfigurationList{})
 	return err
@@ -98,7 +105,8 @@ func (c *FakeCommunityConfigurations) DeleteCollection(ctx context.Context, opts
 // Patch applies the patch and returns the patched communityConfiguration.
 func (c *FakeCommunityConfigurations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CommunityConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(communityconfigurationsResource, name, pt, data, subresources...), &v1alpha1.CommunityConfiguration{})
+		Invokes(testing.NewPatchSubresourceAction(communityconfigurationsResource, c.ns, name, pt, data, subresources...), &v1alpha1.CommunityConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
