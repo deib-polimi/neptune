@@ -55,7 +55,7 @@ func main() {
 		CommunityConfiguration: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
 	}
 
-	communityUpdater := syscontroller.NewCommunityUpdater(kubernetesClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List)
+	communityUpdater := syscontroller.NewCommunityUpdater(kubernetesClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List, eaclient)
 
 	communityGetter := slpaclient.NewClient()
 

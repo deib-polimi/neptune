@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	eafake "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/fake"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	"github.com/stretchr/testify/require"
@@ -42,6 +44,10 @@ func updateNode(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (
 	}, nil
 }
 
+func updateStatus(ctx context.Context, cc *eav1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*eav1alpha1.CommunityConfiguration, error) {
+	return cc, nil
+}
+
 func listNodeWithNoLabel(selector labels.Selector) (ret []*corev1.Node, err error) {
 	return []*corev1.Node{
 		{
@@ -75,7 +81,7 @@ func listNodeNotInCommunity(selector labels.Selector) (ret []*corev1.Node, err e
 	}, nil
 }
 
-func TestUpdateCommunities(t *testing.T) {
+func TestUpdateCommunityNodes(t *testing.T) {
 
 	testcases := []struct {
 		description         string
@@ -185,7 +191,7 @@ func TestUpdateCommunities(t *testing.T) {
 
 	for _, tt := range testcases {
 		t.Run(tt.description, func(t *testing.T) {
-			c := NewCommunityUpdater(tt.updateFunc, tt.listFunc)
+			c := NewCommunityUpdater(tt.updateFunc, tt.listFunc, eafake.NewSimpleClientset())
 
 			err := c.UpdateCommunityNodes(tt.input)
 

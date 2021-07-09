@@ -3,16 +3,16 @@ package controller
 import (
 	"fmt"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-
+	fp "github.com/JohnCGriffin/yogofn"
 	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -39,7 +39,7 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 			utilruntime.HandleError(fmt.Errorf("CommunityConfiguraton '%s' in work queue no longer exists", key))
 
 			klog.Info("Clearing nodes' labels")
-			c.communityUpdater.ClearNodes()
+			c.communityUpdater.ClearNodesLabels()
 			return nil
 		}
 		return err
@@ -56,6 +56,14 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 
 	if err != nil {
 		return fmt.Errorf("error while updating nodes: %s", err)
+	}
+
+	newCCStatus, _ := fp.Map(CommunityName, communities).([]string)
+
+	err = c.communityUpdater.UpdateConfigurationStatus(cc, newCCStatus)
+
+	if err != nil {
+		return fmt.Errorf("error while updating %s status: %s", key, err)
 	}
 
 	c.recorder.Event(cc, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
