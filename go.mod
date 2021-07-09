@@ -3,6 +3,7 @@ module github.com/lterrac/edge-autoscaler
 go 1.16
 
 require (
+	github.com/JohnCGriffin/yogofn v0.0.0-20170613212352-43d7b79df9f1
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/stretchr/testify v1.7.0

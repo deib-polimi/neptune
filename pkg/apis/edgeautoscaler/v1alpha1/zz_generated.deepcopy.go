@@ -90,8 +90,18 @@ func (in *CommunityConfigurationStatus) DeepCopyInto(out *CommunityConfiguration
 	*out = *in
 	if in.Communities != nil {
 		in, out := &in.Communities, &out.Communities
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string][]string, len(*in))
+		for key, val := range *in {
+			var outVal []string
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = make([]string, len(*in))
+				copy(*out, *in)
+			}
+			(*out)[key] = outVal
+		}
 	}
 	return
 }
