@@ -61,8 +61,8 @@ func (c CommunityUpdater) UpdateConfigurationStatus(cc *eav1alpha1.CommunityConf
 	return err
 }
 
-// UpdateCommunityNodes applies the new labels to Kubernetes Nodes
-func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Community) error {
+// UpdateCommunityNodes applies the new labels for a given namespace to Kubernetes Nodes
+func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []slpaclient.Community) error {
 	clusterNodes, err := c.listNodes(labels.Everything())
 
 	if err != nil {
@@ -87,12 +87,12 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 
 			labels := node.GetLabels()
 
-			if comm, ok := labels[ealabels.CommunityLabel]; !ok || comm != community.Name {
-				labels[ealabels.CommunityLabel] = community.Name
+			if comm, ok := labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !ok || comm != community.Name {
+				labels[ealabels.CommunityLabel.WithNamespace(namespace).String()] = community.Name
 			}
 
-			if role, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.String()] {
-				labels[ealabels.CommunityRoleLabel.String()] = member.Labels[ealabels.CommunityRoleLabel.String()].(string)
+			if role, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] {
+				labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] = member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()].(string)
 			}
 
 			_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
@@ -113,17 +113,17 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 	for _, node := range nodeMap {
 		labels := node.GetLabels()
 
-		if _, ok := labels[ealabels.CommunityLabel]; !ok {
+		if _, ok := labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !ok {
 			continue
 		}
 
-		delete(labels, ealabels.CommunityLabel)
+		delete(labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
 
-		if _, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok {
+		if _, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok {
 			continue
 		}
 
-		delete(labels, ealabels.CommunityRoleLabel.String())
+		delete(labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 
 		_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
@@ -138,8 +138,8 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 	return nil
 }
 
-// ClearNodesLabels removes the labels from nodes
-func (c *CommunityUpdater) ClearNodesLabels() error {
+// ClearNodesLabels removes the labels of a given namespace from nodes
+func (c *CommunityUpdater) ClearNodesLabels(namespace string) error {
 	clusterNodes, err := c.listNodes(labels.Everything())
 
 	if err != nil {
@@ -147,12 +147,12 @@ func (c *CommunityUpdater) ClearNodesLabels() error {
 	}
 
 	for _, node := range clusterNodes {
-		if _, ok := node.Labels[ealabels.CommunityLabel]; ok {
-			delete(node.Labels, ealabels.CommunityLabel)
+		if _, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; ok {
+			delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
 		}
 
-		if _, ok := node.Labels[ealabels.CommunityRoleLabel.String()]; ok {
-			delete(node.Labels, ealabels.CommunityRoleLabel.String())
+		if _, ok := node.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; ok {
+			delete(node.Labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 		}
 
 		_, err = c.updateNode(context.TODO(), node, v1.UpdateOptions{})

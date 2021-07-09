@@ -17,16 +17,16 @@ import (
 var resultObjectMeta = v1.ObjectMeta{
 	Name: "node-1",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.String(): "LEADER",
-		ealabels.CommunityLabel:              "community-1",
+		ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
+		ealabels.CommunityLabel.WithNamespace("").String():     "community-1",
 	},
 }
 
 var notInCommunityMeta = v1.ObjectMeta{
 	Name: "node-4",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.String(): "MEMBER",
-		ealabels.CommunityLabel:              "community-2",
+		ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
+		ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
 	},
 }
 
@@ -65,8 +65,8 @@ func listNodeWithDifferentLabel(selector labels.Selector) (ret []*corev1.Node, e
 			ObjectMeta: v1.ObjectMeta{
 				Name: "node-1",
 				Labels: map[string]string{
-					ealabels.CommunityRoleLabel.String(): "MEMBER",
-					ealabels.CommunityLabel:              "community-2",
+					ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
+					ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
 				},
 			},
 		},
@@ -100,7 +100,7 @@ func TestUpdateCommunityNodes(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -124,7 +124,7 @@ func TestUpdateCommunityNodes(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -148,7 +148,7 @@ func TestUpdateCommunityNodes(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -172,7 +172,7 @@ func TestUpdateCommunityNodes(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -193,7 +193,7 @@ func TestUpdateCommunityNodes(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 			c := NewCommunityUpdater(tt.updateFunc, tt.listFunc, eafake.NewSimpleClientset())
 
-			err := c.UpdateCommunityNodes(tt.input)
+			err := c.UpdateCommunityNodes("", tt.input)
 
 			require.Nil(t, err)
 			require.Equal(t, tt.desiredUpdatedNodes, c.updatedNodes)
