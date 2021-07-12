@@ -72,7 +72,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	By("bootstrapping the community getter and updater")
-	communityUpdater := syscontroller.NewCommunityUpdater(kubeClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List)
+	communityUpdater := syscontroller.NewCommunityUpdater(kubeClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List, eaClient)
 
 	communityGetter := slpaclient.NewFakeClient()
 	By("bootstrapping controller")
