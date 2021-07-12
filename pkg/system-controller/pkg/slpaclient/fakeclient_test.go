@@ -24,14 +24,14 @@ func TestFakeCommunities(t *testing.T) {
 							Name: "node-1",
 							Labels: map[string]interface{}{
 								ealabels.CommunityRoleLabel.String(): ealabels.Leader.String(),
-								ealabels.CommunityLabel:              "community-0",
+								ealabels.CommunityLabel.String():     "community-0",
 							},
 						},
 						{
 							Name: "node-3",
 							Labels: map[string]interface{}{
 								ealabels.CommunityRoleLabel.String(): ealabels.Member.String(),
-								ealabels.CommunityLabel:              "community-0",
+								ealabels.CommunityLabel.String():     "community-0",
 							},
 						},
 					},
@@ -43,7 +43,7 @@ func TestFakeCommunities(t *testing.T) {
 							Name: "node-2",
 							Labels: map[string]interface{}{
 								ealabels.CommunityRoleLabel.String(): ealabels.Leader.String(),
-								ealabels.CommunityLabel:              "community-1",
+								ealabels.CommunityLabel.String():     "community-1",
 							},
 						},
 					},

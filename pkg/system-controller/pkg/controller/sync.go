@@ -3,16 +3,16 @@ package controller
 import (
 	"fmt"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-
+	fp "github.com/JohnCGriffin/yogofn"
 	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -39,7 +39,7 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 			utilruntime.HandleError(fmt.Errorf("CommunityConfiguraton '%s' in work queue no longer exists", key))
 
 			klog.Info("Clearing nodes' labels")
-			c.communityUpdater.ClearNodes()
+			c.communityUpdater.ClearNodesLabels(namespace)
 			return nil
 		}
 		return err
@@ -51,11 +51,29 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 		return fmt.Errorf("error while executing SLPA: %s", err)
 	}
 
+	//add the namespace to community labels
+	for _, community := range communities {
+		for _, member := range community.Members {
+			member.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityLabel.String()]
+			member.Labels[ealabels.CommunityRoleLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityRoleLabel.String()]
+			delete(member.Labels, ealabels.CommunityLabel.String())
+			delete(member.Labels, ealabels.CommunityRoleLabel.String())
+		}
+	}
+
 	// update labels on corev1.Node with the corresponding community
-	err = c.communityUpdater.UpdateCommunityNodes(communities)
+	err = c.communityUpdater.UpdateCommunityNodes(cc.Namespace, communities)
 
 	if err != nil {
 		return fmt.Errorf("error while updating nodes: %s", err)
+	}
+
+	newCCStatus, _ := fp.Map(CommunityName, communities).([]string)
+
+	err = c.communityUpdater.UpdateConfigurationStatus(cc, newCCStatus)
+
+	if err != nil {
+		return fmt.Errorf("error while updating %s status: %s", key, err)
 	}
 
 	c.recorder.Event(cc, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)

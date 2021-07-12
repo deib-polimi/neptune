@@ -32,7 +32,7 @@ func (fc *FakeClient) Communities(req *RequestSLPA) (result []Community, err err
 
 	communityIndex := 0
 	for _, node := range req.Hosts {
-		node.Labels[ealabels.CommunityLabel] = result[communityIndex].Name
+		node.Labels[ealabels.CommunityLabel.String()] = result[communityIndex].Name
 		node.Labels[ealabels.CommunityRoleLabel.String()] = ealabels.Member.String()
 		result[communityIndex].Members = append(result[communityIndex].Members, node)
 

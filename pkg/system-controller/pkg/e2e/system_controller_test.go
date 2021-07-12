@@ -2,9 +2,13 @@ package e2e_test
 
 import (
 	"context"
+	"testing"
 	"time"
 
+	"github.com/emirpasic/gods/sets/hashset"
+
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	"github.com/stretchr/testify/assert"
 
 	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	. "github.com/onsi/ginkgo"
@@ -37,17 +41,20 @@ var cc = &eaapi.CommunityConfiguration{
 		ProbabilityThreshold: 0,
 		Iterations:           20,
 	},
+	Status: eaapi.CommunityConfigurationStatus{
+		Communities: []string{},
+	},
 }
 
 var _ = Describe("System Controller", func() {
 	Context("With a Community Configuration deployed inside the cluster", func() {
 		var err error
 		var nodes *corev1.NodeList
+		generatedCommunities := hashset.New()
 
 		ctx := context.Background()
 
-		It("Wait for worker nodes to become ready", func() {
-
+		It("Waits for nodes to become ready", func() {
 			// wait for nodes to become ready
 			Eventually(func() bool {
 				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -64,9 +71,14 @@ var _ = Describe("System Controller", func() {
 				return true
 
 			}, 6*timeout, interval).Should(BeTrue())
+		})
 
+		It("Creates the Community Configuration resource", func() {
 			_, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Create(ctx, cc, metav1.CreateOptions{})
 			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("Assign labels to all worker nodes", func() {
 
 			Eventually(func() bool {
 				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -82,7 +94,7 @@ var _ = Describe("System Controller", func() {
 						continue
 					}
 
-					_, communityLabelExists = node.Labels[ealabels.CommunityLabel]
+					_, communityLabelExists = node.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()]
 					return communityLabelExists
 				}
 
@@ -100,7 +112,8 @@ var _ = Describe("System Controller", func() {
 						continue
 					}
 
-					communityName := node.Labels[ealabels.CommunityLabel]
+					communityName := node.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()]
+					generatedCommunities.Add(communityName)
 					communities[communityName] = append(communities[communityName], &node)
 				}
 
@@ -110,7 +123,7 @@ var _ = Describe("System Controller", func() {
 					hasLeader := false
 
 					for _, node := range community {
-						if node.Labels[ealabels.CommunityRoleLabel.String()] == ealabels.Leader.String() {
+						if node.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] == ealabels.Leader.String() {
 							hasLeader = true
 						}
 					}
@@ -122,6 +135,18 @@ var _ = Describe("System Controller", func() {
 
 				return true
 
+			}, timeout, interval).Should(BeTrue())
+		})
+
+		It("has update the community configuration status", func() {
+			updatedCC, err := eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(cc.Namespace).Get(ctx, cc.Name, metav1.GetOptions{})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Eventually(func() bool {
+				if len(updatedCC.Status.Communities) == 0 {
+					return false
+				}
+				return assert.ElementsMatch(&testing.T{}, generatedCommunities.Values(), updatedCC.Status.Communities)
 			}, timeout, interval).Should(BeTrue())
 		})
 
@@ -144,8 +169,8 @@ var _ = Describe("System Controller", func() {
 						continue
 					}
 
-					_, communityLabelExists = node.Labels[ealabels.CommunityLabel]
-					_, communityRoleLabelExists = node.Labels[ealabels.CommunityRoleLabel.String()]
+					_, communityLabelExists = node.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()]
+					_, communityRoleLabelExists = node.Labels[ealabels.CommunityRoleLabel.WithNamespace(cc.Namespace).String()]
 
 					if communityLabelExists || communityRoleLabelExists {
 						return false

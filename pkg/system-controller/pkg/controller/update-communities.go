@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
@@ -19,27 +21,49 @@ type UpdateNodeFunc func(ctx context.Context, node *corev1.Node, opts v1.UpdateO
 // ListNodeFunc retrieves the nodes used to build communities
 type ListNodeFunc func(selector labels.Selector) (ret []*corev1.Node, err error)
 
+// UpdateStatusFunc updates the cc status with the new communities
+type UpdateStatusFunc func(ctx context.Context, cc *eav1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*eav1alpha1.CommunityConfiguration, error)
+
+// UpdateStatusNamespaceGenerator generates an UpdateStatusFunc for a given namespace
+type UpdateStatusNamespaceGenerator func(ns string) UpdateStatusFunc
+
 // CommunityUpdater takes care of keeping updated Kubernetes Nodes according to the last SLPA execution
 type CommunityUpdater struct {
-	updatedNodes map[string]*corev1.Node
-	clearedNodes map[string]*corev1.Node
-	updateFunc   UpdateNodeFunc
-	listFunc     ListNodeFunc
+	updatedNodes                   map[string]*corev1.Node
+	clearedNodes                   map[string]*corev1.Node
+	updateNode                     UpdateNodeFunc
+	listNodes                      ListNodeFunc
+	updateStatusNamespaceGenerator UpdateStatusNamespaceGenerator
 }
 
 // NewCommunityUpdater returns a new CommunityUpdater
-func NewCommunityUpdater(updateFunc UpdateNodeFunc, listFunc ListNodeFunc) *CommunityUpdater {
+func NewCommunityUpdater(updateNodeFunc UpdateNodeFunc, listNodesFunc ListNodeFunc, eaclient eaclientset.Interface) *CommunityUpdater {
 	return &CommunityUpdater{
 		updatedNodes: make(map[string]*corev1.Node),
 		clearedNodes: make(map[string]*corev1.Node),
-		updateFunc:   updateFunc,
-		listFunc:     listFunc,
+		updateNode:   updateNodeFunc,
+		listNodes:    listNodesFunc,
+		updateStatusNamespaceGenerator: func(ns string) UpdateStatusFunc {
+			return eaclient.EdgeautoscalerV1alpha1().CommunityConfigurations(ns).Update
+		},
 	}
 }
 
-// UpdateCommunityNodes applies the new labels to Kubernetes Nodes
-func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Community) error {
-	clusterNodes, err := c.listFunc(labels.Everything())
+// CommunityName returns the name of a community
+func CommunityName(c slpaclient.Community) string {
+	return c.Name
+}
+
+// UpdateConfigurationStatus updates the status of cc resources with the new communities generated for a given namespace
+func (c CommunityUpdater) UpdateConfigurationStatus(cc *eav1alpha1.CommunityConfiguration, communities []string) error {
+	cc.Status.Communities = communities
+	_, err := c.updateStatusNamespaceGenerator(cc.Namespace)(context.TODO(), cc, v1.UpdateOptions{})
+	return err
+}
+
+// UpdateCommunityNodes applies the new labels for a given namespace to Kubernetes Nodes
+func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []slpaclient.Community) error {
+	clusterNodes, err := c.listNodes(labels.Everything())
 
 	if err != nil {
 		return err
@@ -63,15 +87,15 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 
 			labels := node.GetLabels()
 
-			if comm, ok := labels[ealabels.CommunityLabel]; !ok || comm != community.Name {
-				labels[ealabels.CommunityLabel] = community.Name
+			if comm, ok := labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !ok || comm != community.Name {
+				labels[ealabels.CommunityLabel.WithNamespace(namespace).String()] = community.Name
 			}
 
-			if role, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.String()] {
-				labels[ealabels.CommunityRoleLabel.String()] = member.Labels[ealabels.CommunityRoleLabel.String()].(string)
+			if role, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] {
+				labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] = member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()].(string)
 			}
 
-			_, err := c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
+			_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("Error while updating Node %s: %s", member.Name, err))
@@ -89,19 +113,19 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 	for _, node := range nodeMap {
 		labels := node.GetLabels()
 
-		if _, ok := labels[ealabels.CommunityLabel]; !ok {
+		if _, ok := labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !ok {
 			continue
 		}
 
-		delete(labels, ealabels.CommunityLabel)
+		delete(labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
 
-		if _, ok := labels[ealabels.CommunityRoleLabel.String()]; !ok {
+		if _, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok {
 			continue
 		}
 
-		delete(labels, ealabels.CommunityRoleLabel.String())
+		delete(labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 
-		_, err := c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
+		_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("Error while deleting label from node Node %s: %s", node.Name, err))
@@ -114,24 +138,24 @@ func (c *CommunityUpdater) UpdateCommunityNodes(communities []slpaclient.Communi
 	return nil
 }
 
-// ClearNodes removes the labels from nodes
-func (c *CommunityUpdater) ClearNodes() error {
-	clusterNodes, err := c.listFunc(labels.Everything())
+// ClearNodesLabels removes the labels of a given namespace from nodes
+func (c *CommunityUpdater) ClearNodesLabels(namespace string) error {
+	clusterNodes, err := c.listNodes(labels.Everything())
 
 	if err != nil {
 		return err
 	}
 
 	for _, node := range clusterNodes {
-		if _, ok := node.Labels[ealabels.CommunityLabel]; ok {
-			delete(node.Labels, ealabels.CommunityLabel)
+		if _, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; ok {
+			delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
 		}
 
-		if _, ok := node.Labels[ealabels.CommunityRoleLabel.String()]; ok {
-			delete(node.Labels, ealabels.CommunityRoleLabel.String())
+		if _, ok := node.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; ok {
+			delete(node.Labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 		}
 
-		_, err = c.updateFunc(context.TODO(), node, v1.UpdateOptions{})
+		_, err = c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("Error while deleting label from node Node %s: %s", node.Name, err))

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	eafake "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/fake"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	"github.com/stretchr/testify/require"
@@ -15,16 +17,16 @@ import (
 var resultObjectMeta = v1.ObjectMeta{
 	Name: "node-1",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.String(): "LEADER",
-		ealabels.CommunityLabel:              "community-1",
+		ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
+		ealabels.CommunityLabel.WithNamespace("").String():     "community-1",
 	},
 }
 
 var notInCommunityMeta = v1.ObjectMeta{
 	Name: "node-4",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.String(): "MEMBER",
-		ealabels.CommunityLabel:              "community-2",
+		ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
+		ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
 	},
 }
 
@@ -40,6 +42,10 @@ func updateNode(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (
 			Labels: resultObjectMeta.Labels,
 		},
 	}, nil
+}
+
+func updateStatus(ctx context.Context, cc *eav1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*eav1alpha1.CommunityConfiguration, error) {
+	return cc, nil
 }
 
 func listNodeWithNoLabel(selector labels.Selector) (ret []*corev1.Node, err error) {
@@ -59,8 +65,8 @@ func listNodeWithDifferentLabel(selector labels.Selector) (ret []*corev1.Node, e
 			ObjectMeta: v1.ObjectMeta{
 				Name: "node-1",
 				Labels: map[string]string{
-					ealabels.CommunityRoleLabel.String(): "MEMBER",
-					ealabels.CommunityLabel:              "community-2",
+					ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
+					ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
 				},
 			},
 		},
@@ -75,7 +81,7 @@ func listNodeNotInCommunity(selector labels.Selector) (ret []*corev1.Node, err e
 	}, nil
 }
 
-func TestUpdateCommunities(t *testing.T) {
+func TestUpdateCommunityNodes(t *testing.T) {
 
 	testcases := []struct {
 		description         string
@@ -94,7 +100,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -118,7 +124,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -142,7 +148,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -166,7 +172,7 @@ func TestUpdateCommunities(t *testing.T) {
 						{
 							Name: "node-1",
 							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.String(): "LEADER",
+								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
 							},
 						},
 					},
@@ -185,9 +191,9 @@ func TestUpdateCommunities(t *testing.T) {
 
 	for _, tt := range testcases {
 		t.Run(tt.description, func(t *testing.T) {
-			c := NewCommunityUpdater(tt.updateFunc, tt.listFunc)
+			c := NewCommunityUpdater(tt.updateFunc, tt.listFunc, eafake.NewSimpleClientset())
 
-			err := c.UpdateCommunityNodes(tt.input)
+			err := c.UpdateCommunityNodes("", tt.input)
 
 			require.Nil(t, err)
 			require.Equal(t, tt.desiredUpdatedNodes, c.updatedNodes)
