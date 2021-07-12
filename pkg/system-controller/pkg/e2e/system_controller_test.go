@@ -42,7 +42,7 @@ var cc = &eaapi.CommunityConfiguration{
 		Iterations:           20,
 	},
 	Status: eaapi.CommunityConfigurationStatus{
-		Communities: make(map[string][]string),
+		Communities: []string{},
 	},
 }
 
@@ -143,12 +143,10 @@ var _ = Describe("System Controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Eventually(func() bool {
-				var communities []string
-				var exists bool
-				if communities, exists = updatedCC.Status.Communities[cc.Namespace]; !exists {
+				if len(updatedCC.Status.Communities) == 0 {
 					return false
 				}
-				return assert.ElementsMatch(&testing.T{}, generatedCommunities.Values(), communities)
+				return assert.ElementsMatch(&testing.T{}, generatedCommunities.Values(), updatedCC.Status.Communities)
 			}, timeout, interval).Should(BeTrue())
 		})
 

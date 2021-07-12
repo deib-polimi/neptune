@@ -56,7 +56,7 @@ func CommunityName(c slpaclient.Community) string {
 
 // UpdateConfigurationStatus updates the status of cc resources with the new communities generated for a given namespace
 func (c CommunityUpdater) UpdateConfigurationStatus(cc *eav1alpha1.CommunityConfiguration, communities []string) error {
-	cc.Status.Communities[cc.Namespace] = communities
+	cc.Status.Communities = communities
 	_, err := c.updateStatusNamespaceGenerator(cc.Namespace)(context.TODO(), cc, v1.UpdateOptions{})
 	return err
 }
