@@ -3,7 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	openfaasv1 "github.com/openfaas/openfaas-operator/pkg/apis/openfaas/v1"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -15,7 +15,6 @@ import (
 )
 
 func TestNewSchedulingInput(t *testing.T) {
-
 	nNodes := 100
 	nFunctions := 500
 
@@ -233,9 +232,9 @@ func TestSchedule(t *testing.T) {
 			if err != nil {
 				require.True(t, tt.expectError)
 			} else {
-					require.Equal(t, len(output.NodeNames), tt.nNodes)
-					require.Equal(t, len(output.FunctionNames), tt.nFunctions)
-					require.False(t, tt.expectError)
+				require.Equal(t, len(output.NodeNames), tt.nNodes)
+				require.Equal(t, len(output.FunctionNames), tt.nFunctions)
+				require.False(t, tt.expectError)
 			}
 
 		})

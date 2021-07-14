@@ -1,13 +1,16 @@
 package v1alpha1
 
+// +kubebuilder:object:generate=true
+
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CommunityConfigurationList is a list of CommunityConfiguration
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:scope=Cluster
 // CommunityConfigurationList is a list of CommunityConfigurations resources
 type CommunityConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -18,6 +21,8 @@ type CommunityConfigurationList struct {
 
 // CommunityConfiguration is a configuration for the autoscaling system.
 // +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CommunityConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -62,6 +67,8 @@ type CommunityConfigurationStatus struct {
 }
 
 // CommunityScheduleList is a list of CommunitySchedules
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CommunityScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -72,6 +79,8 @@ type CommunityScheduleList struct {
 
 // CommunitySchedule wraps the rules to route traffic inside a community
 // +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type CommunitySchedule struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -83,13 +92,15 @@ type CommunitySchedule struct {
 
 // CommunityScheduleSpec is the spec for a CommunitySchedule
 type CommunityScheduleSpec struct {
-	RoutingRules CommunitySourceRoutingRule `json:"routing_rules"`
-	Allocations CommunityFunctionAllocation `json:"allocations"`
+	RoutingRules CommunitySourceRoutingRule  `json:"routing_rules"`
+	Allocations  CommunityFunctionAllocation `json:"allocations"`
 }
 
-type CommunityFunctionRoutingRule map[string]resource.Quantity
-type CommunityDestinationRoutingRule map[string]CommunityFunctionRoutingRule
-type CommunitySourceRoutingRule map[string]CommunityDestinationRoutingRule
+// routing rule format: source node - function name - destination node
+
+type CommunityFunctionRoutingRule map[string]CommunityDestinationRoutingRule
+type CommunityDestinationRoutingRule map[string]resource.Quantity
+type CommunitySourceRoutingRule map[string]CommunityFunctionRoutingRule
 
 type CommunityNodeAllocation map[string]bool
 type CommunityFunctionAllocation map[string]CommunityNodeAllocation
