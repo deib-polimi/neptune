@@ -157,15 +157,23 @@ func (s *Server) admit(request *admissionv1.AdmissionRequest) *admissionv1.Admis
 
 	// Check if the deployment should be handled by the webhook
 	for _, val := range s.config.namespaces {
+<<<<<<< HEAD
 		schedulerName, ok := deployment.Spec.Template.Labels["edgeautoscaler.polimi.it/scheduler"]
 		if val == deployment.Namespace && ok {
+=======
+		if val == deployment.Namespace {
+>>>>>>> feat: partial features
 
 			// Generate patch
 			var patch []patchOperation
 			patch = append(patch, patchOperation{
 				Op:    "add",
 				Path:  "/spec/template/spec/schedulerName",
+<<<<<<< HEAD
 				Value: schedulerName,
+=======
+				Value: s.config.schedulerName,
+>>>>>>> feat: partial features
 			})
 			patchBytes, err := json.Marshal(patch)
 			if err != nil {

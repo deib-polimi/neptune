@@ -12,7 +12,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-
 // TODO: the key is not used
 func (c *CommunityController) runScheduler(key string) error {
 
@@ -143,8 +142,7 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 		for _, pod := range pods {
 			// If the pod has been scheduled but on a node which is not present in the community schedule allocation
 			if len(pod.Spec.NodeName) != 0 {
-				if community, ok := pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()];
-				ok && community == c.communityName{
+				if community, ok := pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok && community == c.communityName {
 					if _, ok := cs.Spec.Allocations[fkey][pod.Spec.NodeName]; !ok {
 						klog.Info(cs.Spec.Allocations)
 						klog.Info(pod.Spec.NodeName)
@@ -210,8 +208,8 @@ func (c *CommunityController) schedulePod(key string) error {
 		busyNodes[otherPod.Spec.NodeName] = true
 	}
 
-	if _, ok := cs.Spec.Allocations[function.Namespace + "/" + function.Name]; ok {
-		for nodeName, v := range cs.Spec.Allocations[function.Namespace + "/" + function.Name] {
+	if _, ok := cs.Spec.Allocations[function.Namespace+"/"+function.Name]; ok {
+		for nodeName, v := range cs.Spec.Allocations[function.Namespace+"/"+function.Name] {
 			if v {
 				if _, ok = busyNodes[nodeName]; !ok {
 					err = c.bind(pod, nodeName)

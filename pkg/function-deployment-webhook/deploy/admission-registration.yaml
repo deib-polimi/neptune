@@ -5,8 +5,13 @@ metadata:
 webhooks:
   - name: "openfaas-fn.function-deployment-custom-scheduler.svc"
     rules:
+<<<<<<< HEAD
       - apiGroups:   ["*"]
         apiVersions: ["*"]
+=======
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+>>>>>>> feat: partial features
         operations:  ["CREATE", "UPDATE"]
         resources:   ["deployments"]
         scope:       "Namespaced"

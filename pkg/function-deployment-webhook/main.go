@@ -21,9 +21,13 @@ func main() {
 	config := webhook.NewConfig(schedulerName, certPath, keyPath, namespacesList)
 	server := webhook.NewServer(config)
 
+<<<<<<< HEAD
 	klog.Infof("Starting webhook server")
 	server.Start()
 	klog.Infof("Webhook server started")
+=======
+	server.Start()
+>>>>>>> feat: partial features
 
 	// listening OS shutdown signal
 	signalChan := make(chan os.Signal, 1)
