@@ -8,7 +8,7 @@ import (
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eainformers "github.com/lterrac/edge-autoscaler/pkg/generated/informers/externalversions"
-	informers2 "github.com/lterrac/edge-autoscaler/pkg/informers"
+	informerswrapper "github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
 	syscontroller "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/controller"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
@@ -54,8 +54,7 @@ func main() {
 	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Minute*30)
 	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Minute*30)
 
-	// TODO: check name of this variable
-	informers := informers2.Informers{
+	informers := informerswrapper.Informers{
 		Pod:                    coreInformerFactory.Core().V1().Pods(),
 		Node:                   coreInformerFactory.Core().V1().Nodes(),
 		Service:                coreInformerFactory.Core().V1().Services(),

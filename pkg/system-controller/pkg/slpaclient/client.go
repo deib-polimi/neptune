@@ -49,7 +49,6 @@ func NewClient() *Client {
 			DialContext: (&net.Dialer{
 				Timeout: 90 * time.Second,
 			}).DialContext,
-			// TODO: Some of those value should be tuned
 			MaxIdleConns:          50,
 			IdleConnTimeout:       90 * time.Second,
 			ExpectContinueTimeout: 5 * time.Second,
