@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
+	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	"time"
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
@@ -43,16 +45,24 @@ func main() {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
+	openfaasClient, err := openfaasclientsent.NewForConfig(cfg)
+	if err != nil {
+		klog.Fatalf("Error building example clientset: %s", err.Error())
+	}
+
 	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Minute*30)
 	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Minute*30)
+	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Minute*30)
 
 	// TODO: check name of this variable
 	informers := informers2.Informers{
 		Pod:                    coreInformerFactory.Core().V1().Pods(),
 		Node:                   coreInformerFactory.Core().V1().Nodes(),
 		Service:                coreInformerFactory.Core().V1().Services(),
+		Deployment:             coreInformerFactory.Apps().V1().Deployments(),
 		CommunitySchedule:      eaInformerFactory.Edgeautoscaler().V1alpha1().CommunitySchedules(),
 		CommunityConfiguration: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
+		Function:               openfaasInformerFactory.Openfaas().V1().Functions(),
 	}
 
 	communityUpdater := syscontroller.NewCommunityUpdater(kubernetesClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List, eaclient)
@@ -71,6 +81,7 @@ func main() {
 	// Start method is non-blocking and runs all registered sainformers in a dedicated goroutine.
 	eaInformerFactory.Start(stopCh)
 	coreInformerFactory.Start(stopCh)
+	openfaasInformerFactory.Start(stopCh)
 
 	if err = systemController.Run(1, stopCh); err != nil {
 		klog.Fatalf("Error running system controller: %s", err.Error())

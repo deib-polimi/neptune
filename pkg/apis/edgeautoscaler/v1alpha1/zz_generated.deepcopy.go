@@ -249,7 +249,7 @@ func (in *CommunityScheduleList) DeepCopyInto(out *CommunityScheduleList) {
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]CommunityConfiguration, len(*in))
+		*out = make([]CommunitySchedule, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

@@ -42,21 +42,21 @@ type CommunityController struct {
 
 	nodeSynced                    cache.InformerSynced
 	communityConfigurationsSynced cache.InformerSynced
+	communitySchedulesSynced      cache.InformerSynced
+	functionSynced                cache.InformerSynced
+	deploymentsSynced             cache.InformerSynced
 
 	communityName      string
 	communityNamespace string
-	configurationName  string
 
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	// workqueue contains all the communityconfigurations to sync
-	deploymentWorkqueue queue.Queue
-	// workqueue contains all the communityconfigurations to sync
-	schedulerWorkqueue queue.Queue
-	// workqueue contains all the communityconfigurations to sync
+	// syncCommunityScheduleWorkqueue contains the community schedules which have to be synced
 	syncCommunityScheduleWorkqueue queue.Queue
+	// unscheduledPodWorkqueue contains the pods which have to be scheduled
+	unscheduledPodWorkqueue queue.Queue
 }
 
 // NewController returns a new CommunityController
@@ -85,9 +85,11 @@ func NewController(
 		listers:                        informers.GetListers(),
 		nodeSynced:                     informers.Node.Informer().HasSynced,
 		communityConfigurationsSynced:  informers.CommunityConfiguration.Informer().HasSynced,
-		deploymentWorkqueue:            queue.NewQueue("DeploymentsQueue"),
-		schedulerWorkqueue:             queue.NewQueue("SchedulerQueue"),
-		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkequeue"),
+		communitySchedulesSynced:       informers.CommunitySchedule.Informer().HasSynced,
+		deploymentsSynced:              informers.Deployment.Informer().HasSynced,
+		functionSynced:                 informers.Function.Informer().HasSynced,
+		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue"),
+		unscheduledPodWorkqueue:        queue.NewQueue("UnscheduledPodWorkqueue"),
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
 	}
@@ -99,10 +101,19 @@ func NewController(
 		UpdateFunc: controller.handleDeploymentUpdate,
 		DeleteFunc: controller.handleDeploymentDelete,
 	})
-	informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleCommunityConfigurationAdd,
-		UpdateFunc: controller.handleCommunityConfigurationUpdate,
-		DeleteFunc: controller.handleCommunityConfigurationDelete,
+	//informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	//	AddFunc:    controller.handleCommunityConfigurationAdd,
+	//	UpdateFunc: controller.handleCommunityConfigurationUpdate,
+	//	DeleteFunc: controller.handleCommunityConfigurationDelete,
+	//})
+	informers.CommunitySchedule.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleCommunityScheduleAdd,
+		UpdateFunc: controller.handleCommunityScheduleUpdate,
+		DeleteFunc: controller.handleCommunityScheduleDelete,
+	})
+	informers.Pod.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handlePodAdd,
+		UpdateFunc: controller.handlePodUpdate,
 	})
 
 	return controller
@@ -123,54 +134,43 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 	if ok := cache.WaitForCacheSync(
 		stopCh,
 		c.communityConfigurationsSynced,
-		c.nodeSynced); !ok {
+		c.communitySchedulesSynced,
+		c.deploymentsSynced,
+		c.nodeSynced,
+		c.functionSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
+	klog.Infof("Starting community controller for community %s/%s", c.communityNamespace, c.communityName)
 	klog.Info("Starting system controller workers")
 
 	for i := 0; i < threadiness; i++ {
-		go wait.Until(c.runDeploymentReplicasSyncWorker, time.Second, stopCh)
-		//go wait.Until(c.runScheduleWorker, time.Second, stopCh)
-		//go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
-		//go wait.Until(c.runSchedulePodsWorker, 30*time.Second, stopCh)
+		// TODO: Currently the scheduler reschedules pods every 30 seconds. It should be change to be triggered by event or as cron jobs
+		go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
+		go wait.Until(c.scheduleUnscheduledPod, time.Second, stopCh)
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
-
-	// TODO: implement
-	// go wait.Until(c.runPerformanceDegradationObserver, time.Second, stopCh)
-	// go wait.Until(c.runTopologyObserver, time.Second, stopCh)
 
 	return nil
 }
 
-// TODO: add comment
-func (c *CommunityController) runDeploymentReplicasSyncWorker() {
-	for c.deploymentWorkqueue.ProcessNextItem(c.syncDeploymentReplicas) {
-	}
-}
-
-// TODO: add comment
-func (c *CommunityController) runScheduleWorker() {
-	for c.schedulerWorkqueue.ProcessNextItem(c.runScheduler) {
-	}
-}
-
-// TODO: add comment
+// runPeriodicScheduleWorker is a worker which runs the scheduling algorithm
 func (c *CommunityController) runPeriodicScheduleWorker() {
-	err := c.runScheduler("wow")
-	klog.Info(err)
+	_ = c.runScheduler("")
 }
 
-// TODO: add comment
-func (c *CommunityController) runSchedulePodsWorker() {
-	err := c.schedulePods(fmt.Sprintf("%s/%s", c.communityNamespace, c.communityName))
-	klog.Info(err)
-}
-
-// TODO: add comment
+// runSyncCommunitySchedule is a worker which looks for inconsistencies between
+// the community schedule and current allocation of pods
+// if any is found, those functions are deleted
 func (c *CommunityController) runSyncCommunitySchedule() {
 	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunitySchedule) {
+	}
+}
+
+// scheduleUnscheduledPod whenever a pod results to be unscheduled
+// this worker finds a new node for that pod
+func (c *CommunityController) scheduleUnscheduledPod() {
+	for c.unscheduledPodWorkqueue.ProcessNextItem(c.schedulePod) {
 	}
 }
 

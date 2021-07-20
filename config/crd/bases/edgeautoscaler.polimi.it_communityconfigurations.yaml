@@ -67,6 +67,9 @@ spec:
                 default: slpa-rest
                 description: SlpaService is the service:port offering the SLPA algorithm
                 type: string
+            required:
+            - community-size
+            - maximum-delay
             type: object
           status:
             description: CommunityConfigurationStatus represents the status of the

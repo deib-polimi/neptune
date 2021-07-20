@@ -5,8 +5,8 @@ metadata:
 webhooks:
   - name: "openfaas-fn.function-deployment-custom-scheduler.svc"
     rules:
-      - apiGroups:   [""]
-        apiVersions: ["v1"]
+      - apiGroups:   ["*"]
+        apiVersions: ["*"]
         operations:  ["CREATE", "UPDATE"]
         resources:   ["deployments"]
         scope:       "Namespaced"

@@ -1,10 +1,16 @@
 package controller
 
 import (
+	"context"
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"strconv"
 
 	fp "github.com/JohnCGriffin/yogofn"
-	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
@@ -20,10 +26,12 @@ const (
 	EmptyNodeListError string = "there are no or too few ready nodes for building communities"
 )
 
+// TODO: better error handling
 func (c *SystemController) syncCommunityConfiguration(key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 
+	klog.Info(key)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return nil
@@ -52,6 +60,7 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 	}
 
 	//add the namespace to community labels
+	// TODO: Davide -> I didn't understand the purpose of this block of code
 	for _, community := range communities {
 		for _, member := range community.Members {
 			member.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityLabel.String()]
@@ -82,7 +91,7 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 
 // ComputeCommunities divides cluster nodes into communities according to the settings passed as input
 // using SLPA
-func (c *SystemController) ComputeCommunities(cc *eaapi.CommunityConfiguration) ([]slpaclient.Community, error) {
+func (c *SystemController) ComputeCommunities(cc *eav1alpha1.CommunityConfiguration) ([]slpaclient.Community, error) {
 	// create the input JSON request used by SLPA algorithm
 	req, err := c.fetchSLPAData(cc)
 
@@ -94,7 +103,7 @@ func (c *SystemController) ComputeCommunities(cc *eaapi.CommunityConfiguration) 
 	return c.communityGetter.Communities(req)
 }
 
-func (c *SystemController) fetchSLPAData(cc *eaapi.CommunityConfiguration) (*slpaclient.RequestSLPA, error) {
+func (c *SystemController) fetchSLPAData(cc *eav1alpha1.CommunityConfiguration) (*slpaclient.RequestSLPA, error) {
 
 	// Get all nodes in cluster
 	nodes, err := c.listers.NodeLister.List(labels.Everything())
@@ -170,4 +179,256 @@ func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]int32
 	}
 
 	return
+}
+
+func (c *SystemController) syncCommunitySchedules(key string) error {
+
+	// Convert the namespace/name string into a distinct namespace and name
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return nil
+	}
+
+	// Get the CC resource with this namespace/name
+	cc, err := c.listers.CommunityConfigurationLister.CommunityConfigurations(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			klog.Errorf("failed to retrieve community configuration %s/%s, error: %s", namespace, name, err)
+			return err
+		}
+	}
+
+	// Check if there's any CommunitySchedule resource which should be deleted or created
+	css, err := c.listers.CommunitySchedules(namespace).List(labels.Everything())
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			klog.Errorf("failed to list community schedules in namespace %s, error: %s", namespace, err)
+			return err
+		}
+	}
+
+	cssMap := make(map[string]*eav1alpha1.CommunitySchedule, len(css))
+	for _, cs := range css {
+		cssMap[cs.Name] = cs
+	}
+	for _, community := range cc.Status.Communities {
+		if _, ok := cssMap[community]; !ok {
+			cs := NewCommunitySchedule(namespace, community)
+			_, err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(cs.Namespace).Create(context.TODO(), cs, metav1.CreateOptions{})
+			if err != nil {
+				klog.Info(err)
+				return err
+			}
+		} else {
+			delete(cssMap, community)
+		}
+	}
+	for _, inconsistentCs := range cssMap {
+		err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(inconsistentCs.Namespace).Delete(context.TODO(), inconsistentCs.Name, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Info(err)
+			return err
+		}
+	}
+
+	selector := labels.SelectorFromSet(map[string]string{
+		ealabels.CommunityControllerDeploymentLabel: "",
+	})
+	dps, err := c.listers.Deployments(namespace).List(selector)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			klog.Errorf("failed to list deployments in namespace, error: %s", namespace, err)
+			return err
+		}
+	}
+
+	dpsMap := make(map[string]*appsv1.Deployment, len(dps))
+	for _, dp := range dps {
+		dpsMap[dp.Name] = dp
+	}
+	for _, community := range cc.Status.Communities {
+		if _, ok := dpsMap[community]; !ok {
+			dp := NewCommunityController(namespace, community)
+			_, err = c.kubernetesClientset.AppsV1().Deployments(dp.Namespace).Create(context.TODO(), dp, metav1.CreateOptions{})
+			if err != nil {
+				klog.Info(err)
+				return err
+			}
+		} else {
+			delete(dpsMap, community)
+		}
+	}
+	for _, inconsistentDp := range dpsMap {
+		err = c.kubernetesClientset.AppsV1().Deployments(inconsistentDp.Namespace).Delete(context.TODO(), inconsistentDp.Name, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Info(err)
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+// ComputeDeploymentReplicas computes the new amount of replicas by taking in consideration all the amounts requested
+// by the communities
+func ComputeDeploymentReplicas(deployment *appsv1.Deployment, communityNamespace string, communities []string) (*int32, error) {
+	instances := int32(0)
+	for _, community := range communities {
+		communityInstancesLabel := controller.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(community).String()
+		if val, ok := deployment.Labels[communityInstancesLabel]; ok {
+			intVal, err := strconv.ParseInt(val, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse community label %s for deployment %s/%s with error: %s", communityInstancesLabel, deployment.Namespace, deployment.Name, err)
+			} else {
+				instances += int32(intVal)
+			}
+		}
+	}
+	//klog.Info("New replicas for deployment %s/%s")
+	return &instances, nil
+}
+
+// syncDeploymentReplicas ensures that the amount of replicas assigned to a deployment
+// the sum of the replicas assigned to all communities
+func (c *SystemController) syncDeploymentReplicas(key string) error {
+	// Convert the namespace/name string into a distinct namespace and name
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+
+	if err != nil {
+		return fmt.Errorf("invalid resource key: %s", key)
+	}
+
+	deployment, err := c.kubernetesClientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			klog.Errorf("failed to retrieve deployment %s/%s with error: %s", namespace, name, err)
+			return err
+		}
+	}
+
+	// This check should be moved before syncing the deployment
+	// Check if it is an openfaas function
+	if deployment.ObjectMeta.Annotations == nil {
+		klog.Infof("no annotation found for deployment %s/%s", namespace, name)
+		return nil
+	}
+	_, ok := deployment.ObjectMeta.Annotations["com.openfaas.function.spec"]
+	if !ok {
+		return nil
+	}
+
+	ccList, err := c.listers.CommunityConfigurations(namespace).List(labels.Everything())
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		} else {
+			klog.Errorf("failed to retrieve community configuration %s, with error: %s", namespace, err)
+			return err
+		}
+	}
+
+	if len(ccList) != 1 {
+		return fmt.Errorf("community configuration size for namespace %s should be 1 instead of %v", namespace, len(ccList))
+	}
+	cc := ccList[0]
+
+	replicas, err := ComputeDeploymentReplicas(deployment, cc.Namespace, cc.Status.Communities)
+	if err != nil {
+		klog.Info("failed to compute replicas for deployment %s/%s with error: %s", namespace, name, err)
+		return err
+	}
+
+	klog.Infof("syncing replicas for deployment %s/%s -> from %v to %v replicas", namespace, name, *deployment.Spec.Replicas, *replicas)
+
+	deployment.Spec.Replicas = replicas
+
+	_, err = c.kubernetesClientset.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update deployment %s/%s with error: %s", namespace, name, err)
+	}
+
+	klog.Infof("deployment %s/%s synced successfully", namespace, name)
+
+	return nil
+}
+
+// NewCommunitySchedule returns a new empty community schedule with a given namespace and name
+func NewCommunitySchedule(namespace, name string) *eav1alpha1.CommunitySchedule {
+	return &eav1alpha1.CommunitySchedule{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "edgeautoscaler.polimi.it/v1alpha1",
+			Kind:       "CommunitySchedule",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: eav1alpha1.CommunityScheduleSpec{
+			RoutingRules:     make(eav1alpha1.CommunitySourceRoutingRule),
+			Allocations:      make(eav1alpha1.CommunityFunctionAllocation),
+			AlgorithmService: "http://allocation-algorithm.default.svc.cluster.local:5000",
+		},
+	}
+}
+
+// NewCommunityController returns a new community controller deployment for a given community
+func NewCommunityController(namespace, name string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ealabels.CommunityControllerDeploymentLabel: "",
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"community": name,
+					"app":       "community-controller",
+				},
+			},
+			Replicas: pointer.Int32Ptr(1),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"community": name,
+						"app":       "community-controller",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            "controller",
+							Image:           "systemautoscaler/community-controller:dev",
+							ImagePullPolicy: corev1.PullAlways,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "COMMUNITY_NAMESPACE",
+									Value: namespace,
+								},
+								{
+									Name:  "COMMUNITY_NAME",
+									Value: name,
+								},
+							},
+						},
+					},
+					ServiceAccountName:           "community-controller",
+					AutomountServiceAccountToken: pointer.BoolPtr(true),
+				},
+			},
+		},
+	}
 }

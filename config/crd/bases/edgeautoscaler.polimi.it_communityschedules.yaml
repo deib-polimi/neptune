@@ -36,13 +36,15 @@ spec:
           spec:
             description: CommunityScheduleSpec is the spec for a CommunitySchedule
             properties:
+              algorithm-service:
+                type: string
               allocations:
                 additionalProperties:
                   additionalProperties:
                     type: boolean
                   type: object
                 type: object
-              routing_rules:
+              routing-rules:
                 additionalProperties:
                   additionalProperties:
                     additionalProperties:
@@ -55,8 +57,9 @@ spec:
                   type: object
                 type: object
             required:
+            - algorithm-service
             - allocations
-            - routing_rules
+            - routing-rules
             type: object
         required:
         - spec

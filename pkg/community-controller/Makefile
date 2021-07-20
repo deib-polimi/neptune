@@ -18,7 +18,7 @@ test:
 	@go test -race $(shell go list ./... | grep -v e2e) --coverprofile=coverage.out
 
 e2e:
-	@go test -race $(shell go list ./... | grep e2e)
+	@go test -race -v $(shell go list ./... | grep e2e)
 
 coverage: test
 	@go tool cover -func=coverage.out
@@ -39,3 +39,10 @@ clean:
 	@rm -rf ./$(IMAGE)
 	@go clean -cache
 	@rm -rf *.out
+
+dev:
+	echo "Building dev release"; \
+	$(BUILD_SETTINGS) go build -trimpath -o "$(IMAGE)" ./main.go; \
+	docker build -t $(REPO)/$(IMAGE):dev . ;\
+	docker push $(REPO)/$(IMAGE):dev ; \
+	echo "Dev release built and pushed"; \

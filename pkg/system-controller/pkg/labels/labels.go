@@ -19,6 +19,9 @@ const (
 
 	// MasterNodeLabel is the label used by Kubernetes to specify the node running the control plane
 	MasterNodeLabel string = "node-role.kubernetes.io/master"
+
+	// CommunityControllerDeployment is the label used to specify that a deployment is a community controller
+	CommunityControllerDeploymentLabel string = "edgeautoscaler.polimi.it/community-controller"
 )
 
 func (c Community) WithNamespace(ns string) Community {

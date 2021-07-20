@@ -107,10 +107,11 @@ func NewSchedulingInput(
 
 	functionMemories := make([]int64, nFunctions)
 	for i, function := range functions {
-		memory, err := strconv.ParseInt(function.Spec.Requests.Memory, 10, 64)
+		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
 			return nil, err
 		}
+		memory := memoryQuantity.MilliValue()
 		functionMemories[i] = memory
 	}
 
@@ -205,6 +206,7 @@ func (s *Scheduler) Apply(communityNamespace, communityName string, output *Sche
 
 }
 
+// ToCommunitySchedule transform a scheduling output to a Community schedule CRD
 func (so *SchedulingOutput) ToCommunitySchedule(cs *eav1alpha1.CommunitySchedule) *eav1alpha1.CommunitySchedule {
 	routingRules := make(eav1alpha1.CommunitySourceRoutingRule)
 	for source, functions := range so.RoutingRules {

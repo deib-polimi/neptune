@@ -15,8 +15,8 @@ import (
 )
 
 func TestNewSchedulingInput(t *testing.T) {
-	nNodes := 100
-	nFunctions := 500
+	nNodes := 10
+	nFunctions := 50
 
 	testcases := []struct {
 		description string
@@ -275,24 +275,23 @@ func newFakeSchedulerServer() {
 			_, ok := routingRules[source]
 			if !ok {
 				routingRules[source] = make(map[string]map[string]float64)
-				for _, dest := range input.NodeNames {
+				for _, f := range input.FunctionNames {
 					_, ok = routingRules[source]
 					if !ok {
-						routingRules[source][dest] = make(map[string]float64)
-						for _, f := range input.FunctionNames {
-							routingRules[source][dest][f] = 0.0
+						routingRules[source][f] = make(map[string]float64)
+						for _, dest := range input.NodeNames {
+							routingRules[source][f][dest] = 0.0
 						}
 					}
 				}
 			}
 		}
-
-		for _, node := range input.NodeNames {
-			_, ok := allocations[node]
+		for _, f := range input.FunctionNames {
+			_, ok := allocations[f]
 			if !ok {
-				allocations[node] = make(map[string]bool)
-				for _, f := range input.FunctionNames {
-					allocations[node][f] = true
+				allocations[f] = make(map[string]bool)
+				for _, node := range input.NodeNames {
+					allocations[f][node] = true
 				}
 			}
 		}

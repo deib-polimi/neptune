@@ -1,18 +1,22 @@
 package e2e_test
 
 import (
+	"context"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
 	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"testing"
 	"time"
 
+	comcontroller "github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	eainformers "github.com/lterrac/edge-autoscaler/pkg/generated/informers/externalversions"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
-	syscontroller "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/controller"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	coreinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -34,7 +38,11 @@ var testEnv *envtest.Environment
 var kubeClient *kubernetes.Clientset
 var eaClient *eaclientset.Clientset
 var openfaasClient *openfaasclientsent.Clientset
-var systemController *syscontroller.SystemController
+var communityController *comcontroller.CommunityController
+var workerNodes []*corev1.Node
+
+const communityNamespace = "e2e"
+const communityName = "test-com1"
 
 var _ = BeforeSuite(func() {
 	done := make(chan interface{})
@@ -79,18 +87,12 @@ var _ = BeforeSuite(func() {
 		Function:               openfaasInformerFactory.Openfaas().V1().Functions(),
 	}
 
-	By("bootstrapping the community getter and updater")
-	communityUpdater := syscontroller.NewCommunityUpdater(kubeClient.CoreV1().Nodes().Update, informers.GetListers().NodeLister.List, eaClient)
-
-	communityGetter := slpaclient.NewFakeClient()
-	By("bootstrapping controller")
-
-	systemController = syscontroller.NewController(
+	communityController = comcontroller.NewController(
 		kubeClient,
 		eaClient,
 		informers,
-		communityUpdater,
-		communityGetter,
+		communityNamespace,
+		communityName,
 	)
 
 	By("starting informers")
@@ -106,17 +108,68 @@ var _ = BeforeSuite(func() {
 	By("starting controller")
 
 	go func() {
-		err = systemController.Run(1, stopCh)
+		err = communityController.Run(2, stopCh)
 		Expect(err).ToNot(HaveOccurred())
 		close(done)
 	}()
+
+	setup()
 
 	Eventually(done, timeout).Should(BeClosed())
 }, 15)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	systemController.Shutdown()
+	communityController.Shutdown()
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
+
+func setup() {
+
+	newFakeSchedulerServer()
+	ctx := context.TODO()
+
+	// Create community configuration
+	_, err := eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(cc.Namespace).Create(ctx, cc, metav1.CreateOptions{})
+	if err != nil {
+		klog.Errorf("failed to create community configuration %s/%s with error %s", cc.Namespace, cc.Name, err)
+	}
+
+	// Create the corresponding community schedules
+	for _, community := range communities {
+		communitySchedule := cs.DeepCopy()
+		communitySchedule.Name = community
+		_, err = eaClient.EdgeautoscalerV1alpha1().CommunitySchedules(communitySchedule.Namespace).Create(ctx, communitySchedule, metav1.CreateOptions{})
+		if err != nil {
+			klog.Errorf("failed to create community schedule %s/%s with error %s", communitySchedule.Namespace, communitySchedule.Name, err)
+		}
+	}
+
+	// Create the openfaas function
+	_, err = openfaasClient.OpenfaasV1().Functions(function.Namespace).Create(ctx, function, metav1.CreateOptions{})
+	if err != nil {
+		klog.Errorf("failed to create function %s/%s with error %s", function.Namespace, function.Name, err)
+	}
+
+	// Retrieve the nodes and label them
+	nodes, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list nodes with error %s", err)
+	}
+	for i, node := range nodes.Items {
+		_, isMaster := node.Labels[labels.MasterNodeLabel]
+		if !isMaster {
+			if node.Labels == nil {
+				node.Labels = make(map[string]string)
+			}
+			node.Labels[labels.CommunityLabel.WithNamespace(namespace).String()] = cc.Status.Communities[i%len(cc.Status.Communities)]
+			_, err = kubeClient.CoreV1().Nodes().Update(ctx, &node, metav1.UpdateOptions{})
+			if err != nil {
+				klog.Errorf("failed to update node %s with error %s", node.Name, err)
+			}
+			workerNodes = append(workerNodes, node.DeepCopy())
+		}
+
+	}
+}

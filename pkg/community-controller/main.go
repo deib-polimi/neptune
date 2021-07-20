@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	comcontroller "github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
@@ -19,10 +20,8 @@ import (
 )
 
 var (
-	masterURL          string
-	kubeconfig         string
-	communityName      string
-	communityNamespace string
+	masterURL  string
+	kubeconfig string
 )
 
 func main() {
@@ -51,6 +50,9 @@ func main() {
 	if err != nil {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
+
+	communityName := getenv("COMMUNITY_NAME", "community-worker")
+	communityNamespace := getenv("COMMUNITY_NAMESPACE", "openfaas-fn")
 
 	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Minute*30)
 	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Minute*30)
@@ -81,7 +83,7 @@ func main() {
 	coreInformerFactory.Start(stopCh)
 	openfaasInformerFactory.Start(stopCh)
 
-	if err = communityController.Run(1, stopCh); err != nil {
+	if err = communityController.Run(2, stopCh); err != nil {
 		klog.Fatalf("Error running system controller: %s", err.Error())
 	}
 
@@ -94,7 +96,13 @@ func main() {
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&communityNamespace, "community-namespace", "openfaas-fn", "Community namespace handled by this controller")
-	flag.StringVar(&communityName, "community-name", "community-1", "Community name handled by this controller")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+}
+
+func getenv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
 }
