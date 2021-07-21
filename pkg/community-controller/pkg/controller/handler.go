@@ -5,20 +5,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Deployment handlers
-
-func (c *CommunityController) handleDeploymentAdd(new interface{}) {
-	c.deploymentWorkqueue.Enqueue(new)
-}
-
-func (c *CommunityController) handleDeploymentDelete(old interface{}) {
-	c.deploymentWorkqueue.Enqueue(old)
-}
-
-func (c *CommunityController) handleDeploymentUpdate(old, new interface{}) {
-	c.deploymentWorkqueue.Enqueue(new)
-}
-
 // Community Schedule handlers
 // Whenever a Community Schedule event is generated check if any pods is misplaced
 func (c *CommunityController) handleCommunityScheduleAdd(new interface{}) {

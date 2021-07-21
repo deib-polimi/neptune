@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -11,7 +10,7 @@ import (
 
 	fp "github.com/JohnCGriffin/yogofn"
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	slpaclient "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,7 +59,6 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 	}
 
 	//add the namespace to community labels
-	// TODO: Davide -> I didn't understand the purpose of this block of code
 	for _, community := range communities {
 		for _, member := range community.Members {
 			member.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityLabel.String()]
@@ -283,7 +281,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 func ComputeDeploymentReplicas(deployment *appsv1.Deployment, communityNamespace string, communities []string) (*int32, error) {
 	instances := int32(0)
 	for _, community := range communities {
-		communityInstancesLabel := controller.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(community).String()
+		communityInstancesLabel := ealabels.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(community).String()
 		if val, ok := deployment.Labels[communityInstancesLabel]; ok {
 			intVal, err := strconv.ParseInt(val, 10, 32)
 			if err != nil {

@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

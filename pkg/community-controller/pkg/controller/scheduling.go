@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
@@ -200,7 +201,7 @@ func (s *Scheduler) Apply(communityNamespace, communityName string, output *Sche
 		deployment.Labels = make(map[string]string)
 	}
 
-	deployment.Labels[CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(communityName).String()] = strconv.Itoa(instances)
+	deployment.Labels[ealabels.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(communityName).String()] = strconv.Itoa(instances)
 
 	return deployment, nil
 

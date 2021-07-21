@@ -95,17 +95,6 @@ func NewController(
 	}
 
 	klog.Info("Setting up event handlers")
-	// Set up an event handler for when ServiceLevelAgreements resources change
-	informers.Deployment.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleDeploymentAdd,
-		UpdateFunc: controller.handleDeploymentUpdate,
-		DeleteFunc: controller.handleDeploymentDelete,
-	})
-	//informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-	//	AddFunc:    controller.handleCommunityConfigurationAdd,
-	//	UpdateFunc: controller.handleCommunityConfigurationUpdate,
-	//	DeleteFunc: controller.handleCommunityConfigurationDelete,
-	//})
 	informers.CommunitySchedule.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.handleCommunityScheduleAdd,
 		UpdateFunc: controller.handleCommunityScheduleUpdate,

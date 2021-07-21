@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	labels2 "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
@@ -103,7 +103,7 @@ var _ = Describe("Community Controller", func() {
 
 			communityReplicas := 0
 			for _, node := range workerNodes {
-				community, ok := node.Labels[labels.CommunityLabel.WithNamespace(namespace).String()]
+				community, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]
 				if ok {
 					if community == communityName {
 						pod := functionPod.DeepCopy()
@@ -209,11 +209,6 @@ func newFakeSchedulerServer() {
 	}()
 }
 
-func intPointer(number int) *int32 {
-	val := int32(number)
-	return &val
-}
-
 var slpaDeployment = &appsv1.Deployment{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      slpaName,
@@ -224,7 +219,7 @@ var slpaDeployment = &appsv1.Deployment{
 		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
 	},
 	Spec: appsv1.DeploymentSpec{
-		Replicas: intPointer(1),
+		Replicas: pointer.Int32Ptr(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": slpaName,
@@ -316,7 +311,7 @@ var functionDeployment = &appsv1.Deployment{
 		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
 	},
 	Spec: appsv1.DeploymentSpec{
-		Replicas: intPointer(0),
+		Replicas: pointer.Int32Ptr(0),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app":        functionName,

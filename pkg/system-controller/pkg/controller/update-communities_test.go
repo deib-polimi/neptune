@@ -6,7 +6,7 @@ import (
 
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	eafake "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/fake"
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"

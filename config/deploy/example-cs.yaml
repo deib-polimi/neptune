@@ -9,5 +9,3 @@ spec:
   probability-threshold: 20
   iterations: 20
   slpa-service: slpa.default.svc.cluster.local:4567
-status:
-  generated-communities: []

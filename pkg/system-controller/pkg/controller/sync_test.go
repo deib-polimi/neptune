@@ -1,12 +1,11 @@
 package controller
 
 import (
-	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	appsv1 "k8s.io/api/apps/v1"
 	"strconv"
 	"testing"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -204,7 +203,7 @@ func TestComputeDeploymentReplicas(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 			deployment := newDeployment()
 			for i, community := range tt.communities {
-				l := controller.CommunityInstancesLabel.WithNamespace("new-namespace").WithName(community).String()
+				l := ealabels.CommunityInstancesLabel.WithNamespace("new-namespace").WithName(community).String()
 				deployment.Labels[l] = strconv.Itoa(tt.replicas[i])
 			}
 			replicas, err := ComputeDeploymentReplicas(deployment, "new-namespace", tt.communities)

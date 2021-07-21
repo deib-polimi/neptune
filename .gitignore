@@ -19,3 +19,5 @@ vendor/
 pkg/*/community-controller
 pkg/*/system-controller
 pkg/*/edge-scheduler
+
+.idea/

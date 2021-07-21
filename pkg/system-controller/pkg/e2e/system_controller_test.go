@@ -2,15 +2,15 @@ package e2e_test
 
 import (
 	"context"
-	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
+	"k8s.io/utils/pointer"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/emirpasic/gods/sets/hashset"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/stretchr/testify/assert"
 
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
@@ -159,7 +159,7 @@ var _ = Describe("System Controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			for _, community := range cc.Status.Communities {
-				functionDeployment.Labels[controller.CommunityInstancesLabel.WithNamespace(functionDeployment.Namespace).WithName(community).String()] = "3"
+				functionDeployment.Labels[ealabels.CommunityInstancesLabel.WithNamespace(functionDeployment.Namespace).WithName(community).String()] = "3"
 			}
 
 			_, err = kubeClient.AppsV1().Deployments(functionDeployment.Namespace).Create(ctx, functionDeployment, metav1.CreateOptions{})
@@ -177,7 +177,7 @@ var _ = Describe("System Controller", func() {
 					return false
 				}
 				for _, community := range cc.Status.Communities {
-					instance, ok := dp.ObjectMeta.Labels[controller.CommunityInstancesLabel.WithNamespace(function.Namespace).WithName(community).String()]
+					instance, ok := dp.ObjectMeta.Labels[ealabels.CommunityInstancesLabel.WithNamespace(function.Namespace).WithName(community).String()]
 					if !ok {
 						return false
 					}
@@ -297,11 +297,6 @@ var _ = Describe("System Controller", func() {
 	})
 })
 
-func intPointer(number int) *int32 {
-	val := int32(number)
-	return &val
-}
-
 var slpaDeployment = &appsv1.Deployment{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      slpaName,
@@ -312,7 +307,7 @@ var slpaDeployment = &appsv1.Deployment{
 		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
 	},
 	Spec: appsv1.DeploymentSpec{
-		Replicas: intPointer(1),
+		Replicas: pointer.Int32Ptr(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": slpaName,
@@ -404,7 +399,7 @@ var functionDeployment = &appsv1.Deployment{
 		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
 	},
 	Spec: appsv1.DeploymentSpec{
-		Replicas: intPointer(0),
+		Replicas: pointer.Int32Ptr(0),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app":        functionName,

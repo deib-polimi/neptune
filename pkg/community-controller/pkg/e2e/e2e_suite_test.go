@@ -2,7 +2,7 @@ package e2e_test
 
 import (
 	"context"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
@@ -158,12 +158,12 @@ func setup() {
 		klog.Errorf("failed to list nodes with error %s", err)
 	}
 	for i, node := range nodes.Items {
-		_, isMaster := node.Labels[labels.MasterNodeLabel]
+		_, isMaster := node.Labels[ealabels.MasterNodeLabel]
 		if !isMaster {
 			if node.Labels == nil {
 				node.Labels = make(map[string]string)
 			}
-			node.Labels[labels.CommunityLabel.WithNamespace(namespace).String()] = cc.Status.Communities[i%len(cc.Status.Communities)]
+			node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()] = cc.Status.Communities[i%len(cc.Status.Communities)]
 			_, err = kubeClient.CoreV1().Nodes().Update(ctx, &node, metav1.UpdateOptions{})
 			if err != nil {
 				klog.Errorf("failed to update node %s with error %s", node.Name, err)
