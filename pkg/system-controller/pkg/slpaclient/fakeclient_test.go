@@ -3,7 +3,7 @@ package slpaclient
 import (
 	"testing"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/stretchr/testify/require"
 )
 
