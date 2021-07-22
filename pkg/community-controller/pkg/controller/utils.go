@@ -80,11 +80,11 @@ func (c *CommunityController) getWorkload() ([][]int64, error) {
 		return nil, fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
 
-	delays := make([][]int64, len(nodes))
-	for i := range delays {
-		delays[i] = make([]int64, len(functions))
+	workloads := make([][]int64, len(nodes))
+	for i := range workloads {
+		workloads[i] = make([]int64, len(functions))
 	}
-	return delays, nil
+	return workloads, nil
 
 }
 

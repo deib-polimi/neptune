@@ -32,14 +32,29 @@ func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}
 // Whenever a pod is unscheduled, schedule it
 func (c *CommunityController) handlePodAdd(new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && len(pod.Spec.NodeName) == 0 {
+	if ok && isFunctionPod(pod) && isUnscheduled(pod) {
 		c.unscheduledPodWorkqueue.Enqueue(new)
 	}
 }
 
 func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && len(pod.Spec.NodeName) == 0 {
+	if ok && isFunctionPod(pod) && isUnscheduled(pod) {
 		c.unscheduledPodWorkqueue.Enqueue(new)
 	}
+}
+
+func isFunctionPod(pod *corev1.Pod) bool {
+	if pod.ObjectMeta.Annotations == nil {
+		return false
+	}
+	_, ok := pod.ObjectMeta.Annotations["com.openfaas.function.spec"]
+	if !ok {
+		return false
+	}
+	return true
+}
+
+func isUnscheduled(pod *corev1.Pod) bool {
+	return len(pod.Spec.NodeName) == 0
 }

@@ -315,17 +315,6 @@ func (c *SystemController) syncDeploymentReplicas(key string) error {
 		}
 	}
 
-	// This check should be moved before syncing the deployment
-	// Check if it is an openfaas function
-	if deployment.ObjectMeta.Annotations == nil {
-		klog.Infof("no annotation found for deployment %s/%s", namespace, name)
-		return nil
-	}
-	_, ok := deployment.ObjectMeta.Annotations["com.openfaas.function.spec"]
-	if !ok {
-		return nil
-	}
-
 	ccList, err := c.listers.CommunityConfigurations(namespace).List(labels.Everything())
 	if err != nil {
 		if errors.IsNotFound(err) {
