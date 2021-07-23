@@ -60,6 +60,11 @@ var _ = Describe("System Controller", func() {
 
 		ctx := context.Background()
 
+		nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		for _, node := range nodes.Items {
+			klog.Info(node)
+		}
+
 		It("Waits for nodes to become ready", func() {
 			// wait for nodes to become ready
 			Eventually(func() bool {
@@ -73,6 +78,7 @@ var _ = Describe("System Controller", func() {
 							klog.Info(condition.Status)
 							klog.Info(condition.Type == corev1.NodeReady)
 							klog.Info(condition.Status == corev1.ConditionFalse)
+							klog.Info(node)
 							return false
 						}
 					}
@@ -80,7 +86,7 @@ var _ = Describe("System Controller", func() {
 
 				return true
 
-			}, 10*timeout, interval).Should(BeTrue())
+			}, 15*timeout, interval).Should(BeTrue())
 		})
 
 		It("Creates the Community Configuration resource", func() {
