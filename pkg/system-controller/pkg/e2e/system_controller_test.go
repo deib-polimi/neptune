@@ -60,12 +60,12 @@ var _ = Describe("System Controller", func() {
 
 		ctx := context.Background()
 
-		nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-		for _, node := range nodes.Items {
-			klog.Info(node)
-		}
 
 		It("Waits for nodes to become ready", func() {
+			nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+			for _, node := range nodes.Items {
+				klog.Info(node)
+			}
 			// wait for nodes to become ready
 			Eventually(func() bool {
 				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
