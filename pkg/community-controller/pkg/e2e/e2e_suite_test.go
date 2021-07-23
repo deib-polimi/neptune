@@ -120,6 +120,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	tearDown()
 	communityController.Shutdown()
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
@@ -169,6 +170,53 @@ func setup() {
 				klog.Errorf("failed to update node %s with error %s", node.Name, err)
 			}
 			workerNodes = append(workerNodes, node.DeepCopy())
+		}
+
+	}
+}
+
+func tearDown() {
+
+	ctx := context.TODO()
+
+	// Create community configuration
+	err := eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(cc.Namespace).Delete(ctx, cc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		klog.Errorf("failed to delete community configuration %s/%s with error %s", cc.Namespace, cc.Name, err)
+	}
+
+	// Create the corresponding community schedules
+	for _, community := range communities {
+		communitySchedule := cs.DeepCopy()
+		communitySchedule.Name = community
+		err = eaClient.EdgeautoscalerV1alpha1().CommunitySchedules(communitySchedule.Namespace).Delete(ctx, communitySchedule.Name, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Errorf("failed to delete community schedule %s/%s with error %s", communitySchedule.Namespace, communitySchedule.Name, err)
+		}
+	}
+
+	// Create the openfaas function
+	err = openfaasClient.OpenfaasV1().Functions(function.Namespace).Delete(ctx, function.Name, metav1.CreateOptions{})
+	if err != nil {
+		klog.Errorf("failed to delete function %s/%s with error %s", function.Namespace, function.Name, err)
+	}
+
+	// Retrieve the nodes and label them
+	nodes, err := kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("failed to list nodes with error %s", err)
+	}
+	for _, node := range nodes.Items {
+		_, isMaster := node.Labels[ealabels.MasterNodeLabel]
+		if !isMaster {
+			if node.Labels == nil {
+				node.Labels = make(map[string]string)
+			}
+			delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
+			_, err = kubeClient.CoreV1().Nodes().Update(ctx, &node, metav1.UpdateOptions{})
+			if err != nil {
+				klog.Errorf("failed to update node %s with error %s", node.Name, err)
+			}
 		}
 
 	}
