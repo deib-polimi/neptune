@@ -380,7 +380,7 @@ var function = &openfaasv1.Function{
 			"edgeautoscaler.polimi.it/scheduler": "edge-autoscaler",
 		},
 		Requests: &openfaasv1.FunctionResources{
-			Memory: "1M",
+			Memory: "1Mi",
 		},
 	},
 }
