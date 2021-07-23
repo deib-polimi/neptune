@@ -3,7 +3,6 @@ package e2e_test
 import (
 	"context"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"strconv"
 	"testing"
@@ -62,10 +61,6 @@ var _ = Describe("System Controller", func() {
 
 
 		It("Waits for nodes to become ready", func() {
-			nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-			for _, node := range nodes.Items {
-				klog.Info(node)
-			}
 			// wait for nodes to become ready
 			Eventually(func() bool {
 				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -74,11 +69,6 @@ var _ = Describe("System Controller", func() {
 				for _, node := range nodes.Items {
 					for _, condition := range node.Status.Conditions {
 						if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionFalse {
-							klog.Info(condition.Type)
-							klog.Info(condition.Status)
-							klog.Info(condition.Type == corev1.NodeReady)
-							klog.Info(condition.Status == corev1.ConditionFalse)
-							klog.Info(node)
 							return false
 						}
 					}
