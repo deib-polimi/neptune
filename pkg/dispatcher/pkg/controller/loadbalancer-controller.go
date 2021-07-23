@@ -2,14 +2,20 @@ package controller
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring"
+	monitoringmetrics "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
-	"github.com/lterrac/edge-autoscaler/pkg/queue"
+	workqueue "github.com/lterrac/edge-autoscaler/pkg/queue"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -41,22 +47,32 @@ type LoadBalancerController struct {
 	kubernetesClientset kubernetes.Interface
 
 	// balancers keeps track of the load balancers associated to a function
-	// TODO: change key with the openfaas reference?
-	balancers map[url.URL]*balancer.LoadBalancer
+	// function name is the key
+	balancers map[string]*balancer.LoadBalancer
 
 	listers informers.Listers
 
 	nodeSynced cache.InformerSynced
 
-	//TODO: change with proper CRD
-	configmapSynced cache.InformerSynced
+	communityScheduleSynced cache.InformerSynced
 
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
 
 	// workqueue contains all the communityconfigurations to sync
-	workqueue queue.Queue
+	workqueue workqueue.Queue
+
+	requestqueue *queue.RequestQueue
+
+	serverListener http.Server
+
+	monitoringChan chan<- monitoringmetrics.RawMetricData
+
+	backendChan chan<- monitoring.BackendList
+
+	// node is the node name on which the controller is running
+	node string
 }
 
 // NewController returns a new SystemController
@@ -64,6 +80,8 @@ func NewController(
 	kubernetesClientset *kubernetes.Clientset,
 	eaClientSet eaclientset.Interface,
 	informers informers.Informers,
+	monitoringChan chan<- monitoringmetrics.RawMetricData,
+	node string,
 ) *LoadBalancerController {
 
 	// Create event broadcaster
@@ -82,14 +100,19 @@ func NewController(
 		recorder:                recorder,
 		listers:                 informers.GetListers(),
 		nodeSynced:              informers.Node.Informer().HasSynced,
-		//TODO: change with proper CRD
-		configmapSynced: informers.ConfigMap.Informer().HasSynced,
-		workqueue:       queue.NewQueue("ConfigMapQueue"),
+		communityScheduleSynced: informers.CommunitySchedule.Informer().HasSynced,
+		workqueue:               workqueue.NewQueue("ConfigMapQueue"),
+		requestqueue:            queue.NewRequestQueue(),
+		monitoringChan:          monitoringChan,
+		balancers:               make(map[string]*balancer.LoadBalancer),
+		node:                    node,
 	}
 
 	klog.Info("Setting up event handlers")
-	// Set up an event handler for when ServiceLevelAgreements resources change
-	informers.CommunityConfiguration.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+
+	//TODO: should we use event handlers or simply periodically poll the new resource?
+	// Set up an event handler for when CommunitySchedule resources change
+	informers.CommunitySchedule.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.workqueue.Add,
 		UpdateFunc: controller.workqueue.Update,
 		DeleteFunc: controller.workqueue.Deletion,
@@ -105,7 +128,7 @@ func NewController(
 func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	// Start the informer factories to begin populating the informer caches
-	klog.Info("Starting system level controller")
+	klog.Info("Starting load balancer controller")
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
@@ -113,35 +136,97 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 	if ok := cache.WaitForCacheSync(
 		stopCh,
 		//TODO: change with proper CRD
-		c.configmapSynced,
+		c.communityScheduleSynced,
 		c.nodeSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	klog.Info("Starting system controller workers")
 
+	//TODO: set port with env var
+	//Listen for incoming request
+	go c.listenAndServe(80)
+
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
+	}
+
+	for i := 0; i < threadiness; i++ {
+		go c.dispatchRequest(stopCh)
 	}
 
 	return nil
 }
 
-// handles standard partitioning (e.g. first partioning and cache sync)
+func (c *LoadBalancerController) listenAndServe(port int) {
+	// create http server
+	c.serverListener = http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: http.HandlerFunc(c.enqueueRequest),
+	}
+
+	klog.Info("server listener started at :%d\n", port)
+
+	err := c.serverListener.ListenAndServe()
+
+	utilruntime.HandleError(fmt.Errorf("closing server listener: %s", err))
+}
+
+// handles standard partitioning (e.g. first partitioning and cache sync)
 func (c *LoadBalancerController) runStandardWorker() {
-	for c.workqueue.ProcessNextItem(c.syncConfigMap) {
+	for c.workqueue.ProcessNextItem(c.syncCommunitySchedule) {
 	}
 }
 
-// control loop to handle performance degradation inside communities
-func (c *LoadBalancerController) runPerformanceDegradationObserver() {
+func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
+	// TODO: a better way would be to check for openfaas-gateway
+	if strings.Contains(r.URL.Host, "/function/") {
+		c.requestqueue.Enqueue(&queue.HTTPRequest{
+			ResponseWriter: w,
+			Request:        r,
+		})
+
+		return
+	}
+
+	// forward any other request
+	go httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
+
 }
 
-// control loop to handle cluster topology changes
-func (c *LoadBalancerController) runTopologyObserver() {
+func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
+	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
+
+		req := c.requestqueue.Dequeue()
+
+		if req == nil {
+			continue
+		}
+
+		// TODO: get correct function name from request
+		if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
+			balancer.Balance(req.ResponseWriter, req.Request)
+		}
+	}
 }
 
 // Shutdown is called when the controller has finished its work
 func (c *LoadBalancerController) Shutdown() {
 	utilruntime.HandleCrash()
+}
+
+func functionName(url *url.URL) string {
+	fragments := strings.Split(url.Host, "/")
+	var index = 0
+	for index = range fragments {
+		if fragments[index] == "function" {
+			break
+		}
+	}
+	return fragments[index+1]
 }

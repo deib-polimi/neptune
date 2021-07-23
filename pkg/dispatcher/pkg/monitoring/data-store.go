@@ -1,22 +1,8 @@
 package monitoring
 
 import (
-	"sync"
-	"time"
-
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
-)
-
-// MetricType are the defined metrics offered by the monitoring component
-type MetricType string
-
-const (
-	// ResponseTime is the response time of the function
-	ResponseTime MetricType = "response-time"
-	// RequestCount is the number of requests forwarded to the function
-	RequestCount MetricType = "request-count"
-	// Throughput is the throughput of the function
-	Throughput MetricType = "throughput"
+	"github.com/modern-go/concurrent"
 )
 
 // BackendList is used to update the backends associated to a function
@@ -31,26 +17,25 @@ type BackendList struct {
 type DataStore struct {
 	backendChan      <-chan BackendList
 	metricChan       <-chan metrics.RawMetricData
-	metricsLock      sync.RWMutex
-	metrics          map[string]*metrics.FunctionMetrics
+	metrics          concurrent.Map
 	windowParameters metrics.WindowParameters
+	exposer          *Exposer
 }
 
 // NewDataStore returns a new DataStore
-func NewDataStore(backendChan <-chan BackendList, metricChan <-chan metrics.RawMetricData) *DataStore {
+func NewDataStore(backendChan <-chan BackendList, metricChan <-chan metrics.RawMetricData, params metrics.WindowParameters) *DataStore {
+	metricMap := concurrent.Map{}
 	return &DataStore{
 		backendChan: backendChan,
 		metricChan:  metricChan,
-		metricsLock: sync.RWMutex{},
-		metrics:     make(map[string]*metrics.FunctionMetrics),
+		metrics:     metricMap,
 		// TODO: customize with env var?
-		windowParameters: metrics.WindowParameters{
-			WindowSize:        1 * time.Minute,
-			WindowGranularity: 30 * time.Second,
-		},
+		windowParameters: params,
+		exposer:          NewExposer(metricMap),
 	}
 }
 
+// Poll will poll the metrics from the channel and update the metrics
 func (ds *DataStore) Poll() {
 	go func() {
 		for {
@@ -65,37 +50,32 @@ func (ds *DataStore) Poll() {
 	}()
 }
 
+// Expose exposes the metrics
+func (ds *DataStore) Expose() {
+	ds.exposer.Run()
+}
+
 func (ds *DataStore) handleRawData(metric metrics.RawMetricData) {
-	ds.metricsLock.Lock()
-	defer ds.metricsLock.Unlock()
 
 	var ms *metrics.FunctionMetrics
-	var exists bool
+	var value interface{}
 
-	if ms, exists = ds.metrics[metric.FunctionURL]; !exists {
-		ms = metrics.NewFunctionMetrics(ds.windowParameters)
-		ds.metrics[metric.FunctionURL] = ms
-	}
+	value, _ = ds.metrics.LoadOrStore(metric.FunctionURL, metrics.NewFunctionMetrics(ds.windowParameters))
+	ms = value.(*metrics.FunctionMetrics)
 
+	// ensure that the current backend exists
 	ms.SetBackend(metric.Backend)
 
 	backend, _ := ms.GetBackend(metric.Backend)
 	backend.AddValue(metric.Value)
 }
 
+//TODO: Everything is good if we assume that a balancer serves all possible functions. Otherwise we should implement a cleaning mechanism to remove old functions from the data store
+
 func (ds *DataStore) updateBackends(function string, backends []string) {
-	ds.metricsLock.Lock()
-	defer ds.metricsLock.Unlock()
-
-	functionBackends := ds.metrics[function]
-
-	// add new backends
-	for _, b := range backends {
-		if _, exists := functionBackends.GetBackend(b); !exists {
-			functionBackends.SetBackend(b)
-		}
+	functionBackends, found := ds.metrics.Load(function)
+	if !found {
+		return
 	}
-
-	// delete old backends
-
+	functionBackends.(*metrics.FunctionMetrics).SyncBackends(backends)
 }

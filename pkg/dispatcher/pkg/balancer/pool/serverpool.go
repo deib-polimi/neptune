@@ -58,3 +58,23 @@ func (s *ServerPool) NextBackend() (b *Backend) {
 	}
 	return b
 }
+
+func (s *ServerPool) BackendDiff(backends []*url.URL) (diff []*url.URL) {
+	blueprint := make(map[*url.URL]bool)
+
+	for actual := range s.backends {
+		blueprint[actual.URL] = true
+	}
+
+	for _, desired := range backends {
+		if _, exists := blueprint[desired]; exists {
+			delete(blueprint, desired)
+		}
+	}
+
+	for oldBackend := range blueprint {
+		diff = append(diff, oldBackend)
+	}
+	return
+
+}

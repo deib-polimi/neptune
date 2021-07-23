@@ -64,12 +64,12 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddServer adds a new backend to the server pool
-func (lb *LoadBalancer) AddServer(serverURL *url.URL, workload *resource.Quantity, recoveryFunc recoveryFunc) {
+func (lb *LoadBalancer) AddServer(serverURL *url.URL, workload *resource.Quantity, recovery recoveryFunc) {
 	proxy := httputil.NewSingleHostReverseProxy(serverURL)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 		utilruntime.HandleError(fmt.Errorf("error while serving request to backend %v: %v", request.URL.Host, e))
 		// enqueue the request again if it cannot be served by a backend
-		recoveryFunc(&queue.HTTPRequest{
+		recovery(&queue.HTTPRequest{
 			ResponseWriter: writer,
 			Request:        request,
 		})
@@ -110,6 +110,10 @@ func (lb *LoadBalancer) UpdateWorkload(serverURL *url.URL, workload *resource.Qu
 
 	lb.serverPool.SetBackend(b, workload)
 	return nil
+}
+
+func (lb *LoadBalancer) ServerPoolDiff(servers []*url.URL) []*url.URL {
+	return lb.serverPool.BackendDiff(servers)
 }
 
 // Shutdown is called when the controller has finished its work
