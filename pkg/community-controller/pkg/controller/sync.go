@@ -24,7 +24,6 @@ func (c *CommunityController) runScheduler(key string) error {
 			ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String(): c.communityName,
 		})
 	nodes, err := c.listers.NodeLister.List(nodeSelector)
-	//nodes, err := c.listers.NodeLister.List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to retrieve nodes using selector %s with error: %s", nodeSelector, err)
 	}
@@ -138,7 +137,7 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 		pods, err := c.GetPodsOfFunction(function)
 		if err != nil {
 			klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
-			return err
+			return fmt.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
 		}
 
 		for _, pod := range pods {
