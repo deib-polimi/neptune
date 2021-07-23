@@ -196,7 +196,7 @@ func tearDown() {
 	}
 
 	// Create the openfaas function
-	err = openfaasClient.OpenfaasV1().Functions(function.Namespace).Delete(ctx, function.Name, metav1.CreateOptions{})
+	err = openfaasClient.OpenfaasV1().Functions(function.Namespace).Delete(ctx, function.Name, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("failed to delete function %s/%s with error %s", function.Namespace, function.Name, err)
 	}

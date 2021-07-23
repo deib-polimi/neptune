@@ -75,7 +75,7 @@ var _ = Describe("System Controller", func() {
 
 				return true
 
-			}, 6*timeout, interval).Should(BeTrue())
+			}, 10*timeout, interval).Should(BeTrue())
 		})
 
 		It("Creates the Community Configuration resource", func() {
