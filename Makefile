@@ -1,5 +1,5 @@
 MAKEFLAGS += --no-print-directory
-COMPONENTS = community-controller system-controller edge-scheduler
+COMPONENTS = community-controller system-controller edge-scheduler function-deployment-webhook
 
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin

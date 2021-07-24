@@ -2,15 +2,18 @@ package e2e_test
 
 import (
 	"context"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
+	"k8s.io/utils/pointer"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/emirpasic/gods/sets/hashset"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/stretchr/testify/assert"
 
-	eaapi "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,27 +24,29 @@ import (
 const namespace = "e2e"
 const slpaNamespace = "kube-system"
 const timeout = 1 * time.Minute
-const interval = 10 * time.Second
+const interval = 2 * time.Second
 
 const slpaName = "slpa-algorithm"
+const ccName = "example-slpa"
+const functionName = "function"
 
-var cc = &eaapi.CommunityConfiguration{
+var cc = &eav1alpha1.CommunityConfiguration{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "example-slpa",
+		Name:      ccName,
 		Namespace: namespace,
 	},
 	TypeMeta: metav1.TypeMeta{
 		Kind:       "CommunityConfiguration",
-		APIVersion: eaapi.SchemeGroupVersion.Identifier(),
+		APIVersion: eav1alpha1.SchemeGroupVersion.Identifier(),
 	},
-	Spec: eaapi.CommunityConfigurationSpec{
+	Spec: eav1alpha1.CommunityConfigurationSpec{
 		SlpaService:          "slpa.kube-system.svc.cluster.local:4567",
 		CommunitySize:        3,
 		MaximumDelay:         100,
 		ProbabilityThreshold: 0,
 		Iterations:           20,
 	},
-	Status: eaapi.CommunityConfigurationStatus{
+	Status: eav1alpha1.CommunityConfigurationStatus{
 		Communities: []string{},
 	},
 }
@@ -54,7 +59,12 @@ var _ = Describe("System Controller", func() {
 
 		ctx := context.Background()
 
+
 		It("Waits for nodes to become ready", func() {
+
+			nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// wait for nodes to become ready
 			Eventually(func() bool {
 				nodes, err = kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -70,7 +80,7 @@ var _ = Describe("System Controller", func() {
 
 				return true
 
-			}, 6*timeout, interval).Should(BeTrue())
+			}, 15*timeout, interval).Should(BeTrue())
 		})
 
 		It("Creates the Community Configuration resource", func() {
@@ -95,6 +105,7 @@ var _ = Describe("System Controller", func() {
 					}
 
 					_, communityLabelExists = node.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()]
+					// TODO: is right to return here? what about the other nodes?
 					return communityLabelExists
 				}
 
@@ -132,13 +143,119 @@ var _ = Describe("System Controller", func() {
 						return false
 					}
 				}
-
 				return true
+			}, 5*timeout, interval).Should(BeTrue())
+		})
 
+		It("Updates the replicas of function deployments based on the one assigned to theirs community one", func() {
+			_, err = openfaasClient.OpenfaasV1().Functions(function.Namespace).Create(ctx, function, metav1.CreateOptions{})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var cc *eav1alpha1.CommunityConfiguration
+
+			// Eventually communities are found and generated
+			Eventually(func() bool {
+				cc, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Get(ctx, ccName, metav1.GetOptions{})
+				if err != nil {
+					return false
+				} else {
+					return len(cc.Status.Communities) > 0
+				}
+			}, timeout, interval).Should(BeTrue())
+
+			for _, community := range cc.Status.Communities {
+				functionDeployment.Labels[ealabels.CommunityInstancesLabel.WithNamespace(functionDeployment.Namespace).WithName(community).String()] = "3"
+			}
+
+			_, err = kubeClient.AppsV1().Deployments(functionDeployment.Namespace).Create(ctx, functionDeployment, metav1.CreateOptions{})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Eventually the deployment instances are set as the sum of the community instances
+			Eventually(func() bool {
+				instances := int32(0)
+				dp, err := kubeClient.AppsV1().Deployments(function.Namespace).Get(ctx, function.Spec.Name, metav1.GetOptions{})
+				if err != nil {
+					return false
+				}
+				cc, err := eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Get(ctx, ccName, metav1.GetOptions{})
+				if err != nil {
+					return false
+				}
+				for _, community := range cc.Status.Communities {
+					instance, ok := dp.ObjectMeta.Labels[ealabels.CommunityInstancesLabel.WithNamespace(function.Namespace).WithName(community).String()]
+					if !ok {
+						return false
+					}
+					intVal, err := strconv.ParseInt(instance, 10, 32)
+					if err != nil {
+						return false
+					} else {
+						instances += int32(intVal)
+					}
+				}
+				return *dp.Spec.Replicas == instances
 			}, timeout, interval).Should(BeTrue())
 		})
 
-		It("has update the community configuration status", func() {
+		It("Creates community schedule for each community", func() {
+
+			var cc *eav1alpha1.CommunityConfiguration
+
+			// Eventually communities are found and generated
+			Eventually(func() bool {
+				cc, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Get(ctx, ccName, metav1.GetOptions{})
+				if err != nil {
+					return false
+				} else {
+					return len(cc.Status.Communities) > 0
+				}
+			}, timeout, interval).Should(BeTrue())
+
+			// Eventually all community schedule are created
+			Eventually(func() bool {
+				allFound := true
+				for _, community := range cc.Status.Communities {
+					cs, err := eaClient.EdgeautoscalerV1alpha1().CommunitySchedules(namespace).Get(ctx, community, metav1.GetOptions{})
+					if err != nil {
+						return false
+					}
+					allFound = allFound && cs.Namespace == namespace && cs.Name == community
+				}
+				return allFound
+			}, timeout, interval).Should(BeTrue())
+
+		})
+
+		It("Creates community controller for each community", func() {
+
+			var cc *eav1alpha1.CommunityConfiguration
+
+			// Eventually communities are found and generated
+			Eventually(func() bool {
+				cc, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Get(ctx, ccName, metav1.GetOptions{})
+				if err != nil {
+					return false
+				} else {
+					return len(cc.Status.Communities) > 0
+				}
+			}, timeout, interval).Should(BeTrue())
+
+			// Eventually all community schedule are created
+			Eventually(func() bool {
+				allFound := true
+				for _, community := range cc.Status.Communities {
+					dp, err := kubeClient.AppsV1().Deployments(namespace).Get(ctx, community, metav1.GetOptions{})
+					if err != nil {
+						return false
+					}
+					allFound = allFound && dp.Namespace == namespace && dp.Name == community
+				}
+				return allFound
+			}, timeout, interval).Should(BeTrue())
+
+		})
+
+		It("Has update the community configuration status", func() {
 			updatedCC, err := eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(cc.Namespace).Get(ctx, cc.Name, metav1.GetOptions{})
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -185,11 +302,6 @@ var _ = Describe("System Controller", func() {
 	})
 })
 
-func intPointer(number int) *int32 {
-	val := int32(number)
-	return &val
-}
-
 var slpaDeployment = &appsv1.Deployment{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      slpaName,
@@ -200,7 +312,7 @@ var slpaDeployment = &appsv1.Deployment{
 		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
 	},
 	Spec: appsv1.DeploymentSpec{
-		Replicas: intPointer(1),
+		Replicas: pointer.Int32Ptr(1),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": slpaName,
@@ -253,6 +365,72 @@ var slpaService = &corev1.Service{
 		},
 		Selector: map[string]string{
 			"app": slpaName,
+		},
+	},
+}
+
+var function = &openfaasv1.Function{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      functionName,
+		Namespace: namespace,
+	},
+	Spec: openfaasv1.FunctionSpec{
+		Name:  functionName,
+		Image: "ghcr.io/openfaas/figlet:latest",
+		Labels: &map[string]string{
+			"com.openfaas.scale.factor":          "20",
+			"com.openfaas.scale.max":             "100",
+			"com.openfaas.scale.min":             "1",
+			"com.openfaas.scale.zero":            "false",
+			"edgeautoscaler.polimi.it/scheduler": "edge-autoscaler",
+		},
+		Requests: &openfaasv1.FunctionResources{
+			Memory: "1Mi",
+		},
+	},
+}
+
+var functionDeployment = &appsv1.Deployment{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      functionName,
+		Namespace: namespace,
+		Labels:    make(map[string]string),
+		Annotations: map[string]string{
+			"com.openfaas.function.spec": "something about openfaas",
+		},
+	},
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "Deployment",
+		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
+	},
+	Spec: appsv1.DeploymentSpec{
+		Replicas: pointer.Int32Ptr(0),
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app":        functionName,
+				"controller": functionName,
+			},
+		},
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RecreateDeploymentStrategyType,
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"app":           functionName,
+					"controller":    functionName,
+					"faas_function": functionName,
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:            functionName,
+						Image:           "ghcr.io/openfaas/figlet:latest",
+						ImagePullPolicy: corev1.PullAlways,
+					},
+				},
+			},
 		},
 	},
 }

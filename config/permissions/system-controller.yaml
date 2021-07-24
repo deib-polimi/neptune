@@ -19,6 +19,10 @@ rules:
 - apiGroups: ["edgeautoscaler.polimi.it"]
   resources: ["communityconfigurations", "communityschedules"]
   verbs: ["*"]
+# TODO: wildcard for everything
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
   # verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

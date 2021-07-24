@@ -35,6 +35,31 @@ spec:
             type: object
           spec:
             description: CommunityScheduleSpec is the spec for a CommunitySchedule
+            properties:
+              algorithm-service:
+                type: string
+              allocations:
+                additionalProperties:
+                  additionalProperties:
+                    type: boolean
+                  type: object
+                type: object
+              routing-rules:
+                additionalProperties:
+                  additionalProperties:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    type: object
+                  type: object
+                type: object
+            required:
+            - algorithm-service
+            - allocations
+            - routing-rules
             type: object
         required:
         - spec

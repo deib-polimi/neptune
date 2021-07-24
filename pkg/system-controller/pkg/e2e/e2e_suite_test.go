@@ -1,6 +1,8 @@
 package e2e_test
 
 import (
+	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
+	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	"testing"
 	"time"
 
@@ -31,6 +33,7 @@ var cfg *rest.Config
 var testEnv *envtest.Environment
 var kubeClient *kubernetes.Clientset
 var eaClient *eaclientset.Clientset
+var openfaasClient *openfaasclientsent.Clientset
 var systemController *syscontroller.SystemController
 
 var _ = BeforeSuite(func() {
@@ -56,19 +59,24 @@ var _ = BeforeSuite(func() {
 
 	kubeClient = kubernetes.NewForConfigOrDie(cfg)
 	eaClient = eaclientset.NewForConfigOrDie(cfg)
+	openfaasClient = openfaasclientsent.NewForConfigOrDie(cfg)
 
 	By("bootstrapping informers")
 
-	crdInformerFactory := eainformers.NewSharedInformerFactory(eaClient, time.Second*30)
+	eaInformerFactory := eainformers.NewSharedInformerFactory(eaClient, time.Second*30)
 	coreInformerFactory := coreinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Minute*30)
 
 	By("creating informers")
 	informers := informers.Informers{
+
 		Pod:                    coreInformerFactory.Core().V1().Pods(),
 		Node:                   coreInformerFactory.Core().V1().Nodes(),
 		Service:                coreInformerFactory.Core().V1().Services(),
-		CommunityConfiguration: crdInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
-		CommunitySchedule:      crdInformerFactory.Edgeautoscaler().V1alpha1().CommunitySchedules(),
+		Deployment:             coreInformerFactory.Apps().V1().Deployments(),
+		CommunitySchedule:      eaInformerFactory.Edgeautoscaler().V1alpha1().CommunitySchedules(),
+		CommunityConfiguration: eaInformerFactory.Edgeautoscaler().V1alpha1().CommunityConfigurations(),
+		Function:               openfaasInformerFactory.Openfaas().V1().Functions(),
 	}
 
 	By("bootstrapping the community getter and updater")
@@ -91,8 +99,9 @@ var _ = BeforeSuite(func() {
 	stopCh := signals.SetupSignalHandler()
 	Expect(err).ToNot(HaveOccurred())
 
-	crdInformerFactory.Start(stopCh)
+	eaInformerFactory.Start(stopCh)
 	coreInformerFactory.Start(stopCh)
+	openfaasInformerFactory.Start(stopCh)
 
 	By("starting controller")
 

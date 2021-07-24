@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: allocation-algorithm
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: allocation-algorithm
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: allocation-algorithm
+    spec:
+      containers:
+      - name: allocation-algorithm
+        image: systemautoscaler/allocation-algorithm-rest:0.0.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        resources:
+          limits:
+            cpu: 1
+            memory: 500Mi
+          requests:
+            cpu: 500m
+            memory: 500Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: allocation-algorithm
+  labels:
+    app: allocation-algorithm
+spec:
+  ports:
+    - port: 5000
+  selector:
+    app: allocation-algorithm
+

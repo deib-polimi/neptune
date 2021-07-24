@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 )
 
 // FakeClient mocks the request and responses sent to SLPA

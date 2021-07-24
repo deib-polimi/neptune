@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: openfaas-fn
+  name: function-deployment-custom-scheduler
+spec:
+  selector:
+    matchLabels:
+      app: function-deployment-custom-scheduler
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: function-deployment-custom-scheduler
+    spec:
+      containers:
+        - name: function-deployment-custom-scheduler
+          image: systemautoscaler/function-deployment-webhook:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8443
+#          resources:
+#            requests:
+#              memory: 128Mi
+#              cpu: 250m
+#            limits:
+#              memory: 128Mi
+#              cpu: 250m
+#          env:
+#            - name: ADDRESS
+#              value: "localhost"
+#            - name: PORT
+#              value: "8080"
+#            - name: WINDOW_SIZE
+#              value: "30s"
+#            - name: WINDOW_GRANULARITY
+#              value: "1ms"
+#          resources:
+#            requests:
+#              memory: 128Mi
+#              cpu: 250m
+#            limits:
+#              memory: 128Mi
+#              cpu: 250m

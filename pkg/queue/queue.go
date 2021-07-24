@@ -8,6 +8,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// TODO: should add a way to handle default operations such as CRD added, deleted or updated
+
 // TODO: comment the file
 type syncFunc func(key string) error
 

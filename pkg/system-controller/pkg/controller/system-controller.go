@@ -55,8 +55,12 @@ type SystemController struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	// workqueue contains all the communityconfigurations to sync
-	workqueue queue.Queue
+	// syncConfigurationsWorkqueue contains all the communityconfigurations to sync
+	syncConfigurationsWorkqueue queue.Queue
+	// syncConfigurationsWorkqueue contains all the communityschedules to sync
+	syncSchedulesWorkqueue queue.Queue
+	// syncDeploymentReplicasWorkqueue contains all the deployment to sync
+	syncDeploymentReplicasWorkqueue queue.Queue
 }
 
 // NewController returns a new SystemController
@@ -79,15 +83,17 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &SystemController{
-		edgeAutoscalerClientSet:       eaClientSet,
-		kubernetesClientset:           kubernetesClientset,
-		communityUpdater:              communityUpdater,
-		communityGetter:               communityGetter,
-		recorder:                      recorder,
-		listers:                       informers.GetListers(),
-		nodeSynced:                    informers.Node.Informer().HasSynced,
-		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
-		workqueue:                     queue.NewQueue("CommunityConfigurationsQueue"),
+		edgeAutoscalerClientSet:         eaClientSet,
+		kubernetesClientset:             kubernetesClientset,
+		communityUpdater:                communityUpdater,
+		communityGetter:                 communityGetter,
+		recorder:                        recorder,
+		listers:                         informers.GetListers(),
+		nodeSynced:                      informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced:   informers.CommunityConfiguration.Informer().HasSynced,
+		syncConfigurationsWorkqueue:     queue.NewQueue("CommunityConfigurationsQueue"),
+		syncSchedulesWorkqueue:          queue.NewQueue("CommunityScheduleQueue"),
+		syncDeploymentReplicasWorkqueue: queue.NewQueue("DeploymentReplicasQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
@@ -96,6 +102,11 @@ func NewController(
 		AddFunc:    controller.handleCommunityConfigurationsAdd,
 		UpdateFunc: controller.handleCommunityConfigurationsUpdate,
 		DeleteFunc: controller.handleCommunityConfigurationsDeletion,
+	})
+	informers.Deployment.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleDeploymentAdd,
+		UpdateFunc: controller.handleDeploymentUpdate,
+		DeleteFunc: controller.handleDeploymentDelete,
 	})
 
 	return controller
@@ -124,6 +135,8 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
+		go wait.Until(c.runSyncSchedulesWorker, time.Second, stopCh)
+		go wait.Until(c.runSyncDeploymentReplicasWorker, time.Second, stopCh)
 	}
 
 	// TODO: implement
@@ -135,7 +148,19 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 
 // handles standard partitioning (e.g. first partioning and cache sync)
 func (c *SystemController) runStandardWorker() {
-	for c.workqueue.ProcessNextItem(c.syncCommunityConfiguration) {
+	for c.syncConfigurationsWorkqueue.ProcessNextItem(c.syncCommunityConfiguration) {
+	}
+}
+
+// handles standard partitioning (e.g. first partioning and cache sync)
+func (c *SystemController) runSyncSchedulesWorker() {
+	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
+	}
+}
+
+// handles standard partitioning (e.g. first partioning and cache sync)
+func (c *SystemController) runSyncDeploymentReplicasWorker() {
+	for c.syncDeploymentReplicasWorkqueue.ProcessNextItem(c.syncDeploymentReplicas) {
 	}
 }
 

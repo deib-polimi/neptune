@@ -39,3 +39,10 @@ clean:
 	@rm -rf ./$(IMAGE)
 	@go clean -cache
 	@rm -rf *.out
+
+dev:
+	echo "Building dev release"; \
+	$(BUILD_SETTINGS) go build -trimpath -o "$(IMAGE)" ./main.go; \
+	docker build -t $(REPO)/$(IMAGE):dev . ;\
+	docker push $(REPO)/$(IMAGE):dev ; \
+	echo "Dev release built and pushed"; \

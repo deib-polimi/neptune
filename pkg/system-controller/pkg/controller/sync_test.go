@@ -1,17 +1,19 @@
 package controller
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
+	"strconv"
 	"testing"
 
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/labels"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var masterNode = &corev1.Node{
-	ObjectMeta: v1.ObjectMeta{
+	ObjectMeta: metav1.ObjectMeta{
 		Name: "master",
 		Labels: map[string]string{
 			ealabels.MasterNodeLabel: "",
@@ -22,14 +24,14 @@ var masterNode = &corev1.Node{
 			{
 				Type:              corev1.NodeReady,
 				Status:            corev1.ConditionTrue,
-				LastHeartbeatTime: v1.Now(),
+				LastHeartbeatTime: metav1.Now(),
 			},
 		},
 	},
 }
 
 var readyNode = &corev1.Node{
-	ObjectMeta: v1.ObjectMeta{
+	ObjectMeta: metav1.ObjectMeta{
 		Name:   "node-1",
 		Labels: make(map[string]string),
 	},
@@ -38,14 +40,14 @@ var readyNode = &corev1.Node{
 			{
 				Type:              corev1.NodeReady,
 				Status:            corev1.ConditionTrue,
-				LastHeartbeatTime: v1.Now(),
+				LastHeartbeatTime: metav1.Now(),
 			},
 		},
 	},
 }
 
 var notReadyNode = &corev1.Node{
-	ObjectMeta: v1.ObjectMeta{
+	ObjectMeta: metav1.ObjectMeta{
 		Name:   "node-2",
 		Labels: make(map[string]string),
 	},
@@ -54,14 +56,14 @@ var notReadyNode = &corev1.Node{
 			{
 				Type:              corev1.NodeReady,
 				Status:            corev1.ConditionFalse,
-				LastHeartbeatTime: v1.Now(),
+				LastHeartbeatTime: metav1.Now(),
 			},
 		},
 	},
 }
 
 var unknownNode = &corev1.Node{
-	ObjectMeta: v1.ObjectMeta{
+	ObjectMeta: metav1.ObjectMeta{
 		Name:   "node-3",
 		Labels: make(map[string]string),
 	},
@@ -70,7 +72,7 @@ var unknownNode = &corev1.Node{
 			{
 				Type:              corev1.NodeReady,
 				Status:            corev1.ConditionUnknown,
-				LastHeartbeatTime: v1.Now(),
+				LastHeartbeatTime: metav1.Now(),
 			},
 		},
 	},
@@ -162,5 +164,63 @@ func TestGetNodeDelays(t *testing.T) {
 				require.Equal(t, len(actual), len(actual[node]))
 			}
 		})
+	}
+}
+
+func TestComputeDeploymentReplicas(t *testing.T) {
+
+	testcases := []struct {
+		description string
+		communities []string
+		replicas    []int
+		expected    int32
+		error       bool
+	}{
+		{
+			description: "single community",
+			communities: []string{"community-1"},
+			replicas:    []int{1},
+			expected:    1,
+			error:       false,
+		},
+		{
+			description: "multi-community",
+			communities: []string{"community-1", "community-2", "community-3"},
+			replicas:    []int{1, 2, 3},
+			expected:    6,
+			error:       false,
+		},
+		{
+			description: "multi-community big test",
+			communities: []string{"community-1", "community-2", "community-3", "community-4", "community-5", "community-6"},
+			replicas:    []int{1, 2, 3, 4, 5, 6},
+			expected:    21,
+			error:       false,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.description, func(t *testing.T) {
+			deployment := newDeployment()
+			for i, community := range tt.communities {
+				l := ealabels.CommunityInstancesLabel.WithNamespace("new-namespace").WithName(community).String()
+				deployment.Labels[l] = strconv.Itoa(tt.replicas[i])
+			}
+			replicas, err := ComputeDeploymentReplicas(deployment, "new-namespace", tt.communities)
+			if err != nil {
+				require.True(t, tt.error)
+			} else {
+				require.False(t, tt.error)
+				require.Equal(t, *replicas, tt.expected)
+			}
+		})
+	}
+}
+
+func newDeployment() *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: make(map[string]string),
+		},
 	}
 }
