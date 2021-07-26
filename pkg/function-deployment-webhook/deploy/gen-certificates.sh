@@ -125,6 +125,16 @@ kubectl create secret generic ${secret} \
         --dry-run -o yaml |
     kubectl -n ${namespace} apply -f -
 
+
+mv ${tmpdir}/server-key.pem $(dirname "$0")
+mv ${tmpdir}/server-cert.pem $(dirname "$0")
+
+
+chmod 777 $(dirname "$0")/server-key.pem
+chmod 777 $(dirname "$0")/server-cert.pem
+
+
+
 # run this file with
 # the certificates are in a tmp directory
 #./gen-certificates.sh --namespace openfaas-fn --service function-deployment-custom-scheduler --secret function-deployment-custom-scheduler
