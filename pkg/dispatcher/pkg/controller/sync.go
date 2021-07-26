@@ -6,11 +6,15 @@ import (
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring"
-	corev1 "k8s.io/api/core/v1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
@@ -19,6 +23,19 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return nil
+	}
+
+	node, err := c.listers.NodeLister.Get(c.node)
+
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't find node %s: %v", c.node, err))
+		return nil
+	}
+
+	nodeLabels := node.GetLabels()
+
+	if communityName, exists := nodeLabels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !exists || communityName != name {
 		return nil
 	}
 
@@ -38,58 +55,110 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 	sourceRules := cs.Spec.RoutingRules
 
 	for source, functionRules := range sourceRules {
-		if source != c.node {
+		if source != node.Name {
 			continue
 		}
 
-		for function, destinationRules := range functionRules {
+		for functionNamespaceName, destinationRules := range functionRules {
+
+			funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
+
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", functionNamespaceName))
+				continue
+			}
+
+			function, err := c.listers.FunctionLister.Functions(funcNamespace).Get(funcName)
+
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("couldn't find function %s: %v", funcName, err))
+				continue
+			}
+
 			var lb *balancer.LoadBalancer
 			var exist bool
 
 			// create a new load balancer if it does not exist
-			if lb, exist = c.balancers[function]; !exist {
+			// TODO: check key
+			if lb, exist = c.balancers[functionNamespaceName]; !exist {
 				lb = balancer.NewLoadBalancer(c.monitoringChan)
-				c.balancers[function] = lb
+				c.balancers[functionNamespaceName] = lb
 			}
 
 			actualBackends := []*url.URL{}
-			actualBackendsName := []string{}
 
 			for destination, workload := range destinationRules {
-				// TODO: use the community controller way to retrieve the function pod running on a node
-				// TODO: maybe use Endpoints
-				destinationURL, err := url.Parse(destination)
+				pods, err := c.GetPodsOfFunctionInNode(function, destination)
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
 					continue
 				}
 
-				// sync load balancer backends with the new rules
-				if !lb.ServerExists(destinationURL) {
-					lb.AddServer(destinationURL, &workload, c.requestqueue.Enqueue)
-				} else {
-					lb.UpdateWorkload(destinationURL, &workload)
-				}
+				for _, pod := range pods {
+					// TODO: handle nodes with GPU and CPU
+					// TODO: find better way to retrieve function port
+					klog.Info(fmt.Sprintf("adding balancer for http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
+					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
 
-				actualBackends = append(actualBackends, destinationURL)
-				actualBackendsName = append(actualBackendsName, destination)
+					if err != nil {
+						utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
+						continue
+					}
 
-				// clean old backends
-				deleteSet := lb.ServerPoolDiff(actualBackends)
+					// sync load balancer backends with the new rules
+					if !lb.ServerExists(destinationURL) {
+						lb.AddServer(destinationURL, &workload, c.requestqueue.Enqueue)
+					} else {
+						lb.UpdateWorkload(destinationURL, &workload)
+					}
 
-				for _, b := range deleteSet {
-					lb.DeleteServer(b)
+					actualBackends = append(actualBackends, destinationURL)
 				}
 			}
 
+			// clean old backends
+			deleteSet := lb.ServerPoolDiff(actualBackends)
+
+			for _, b := range deleteSet {
+				lb.DeleteServer(b)
+			}
+
 			c.backendChan <- monitoring.BackendList{
-				FunctionURL: function,
-				Backends:    actualBackendsName,
+				FunctionURL: functionNamespaceName,
+				Backends:    actualBackends,
 			}
 		}
 	}
 
 	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
+}
+
+// GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
+func (c *LoadBalancerController) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string) ([]*corev1.Pod, error) {
+	klog.Infof("controller: %v faas_function: %v ns: %v", function.Name, function.Spec.Name, function.Namespace)
+	selector := labels.SelectorFromSet(
+		map[string]string{
+			"controller":    function.Name,
+			"faas_function": function.Spec.Name,
+		})
+	pods, err := c.listers.PodLister.Pods(function.Namespace).List(selector)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve pods using selector %s with error: %s", selector, err)
+	}
+
+	var podsInNode []*corev1.Pod
+	for _, pod := range pods {
+		if pod.Spec.NodeName == nodeName {
+			podsInNode = append(podsInNode, pod)
+		}
+	}
+
+	if len(podsInNode) == 0 {
+		return nil, fmt.Errorf("no pods found in node %s", nodeName)
+	}
+
+	return podsInNode, nil
 }

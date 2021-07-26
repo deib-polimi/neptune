@@ -48,7 +48,7 @@ func TestReverseProxy(t *testing.T) {
 	testacases := []struct {
 		description    string
 		backends       []*url.URL
-		createBackends func(url *url.URL) http.Server
+		createBackends func(url *url.URL) *http.Server
 	}{
 		{
 			description: "Test balancer redirection",
@@ -58,9 +58,9 @@ func TestReverseProxy(t *testing.T) {
 					Scheme: "http",
 				},
 			},
-			createBackends: func(url *url.URL) http.Server {
+			createBackends: func(url *url.URL) *http.Server {
 				// create http server
-				server := http.Server{
+				server := &http.Server{
 					Addr:    url.Host,
 					Handler: http.HandlerFunc(healthyHandler),
 				}
@@ -72,7 +72,7 @@ func TestReverseProxy(t *testing.T) {
 
 	for _, tt := range testacases {
 		t.Run(tt.description, func(t *testing.T) {
-			servers := []http.Server{}
+			servers := []*http.Server{}
 			for _, url := range tt.backends {
 				server := tt.createBackends(url)
 				servers = append(servers, server)

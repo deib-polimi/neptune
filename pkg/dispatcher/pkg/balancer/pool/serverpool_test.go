@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-var backends = []*Backend{
+var backends = []Backend{
 	{
 		URL: &url.URL{
 			Host: "localhost:8080",
@@ -29,7 +29,7 @@ var backends = []*Backend{
 func TestPool(t *testing.T) {
 	testcases := []struct {
 		description string
-		input       []*Backend
+		input       []Backend
 		verifyFunc  func(t *testing.T, p *ServerPool)
 	}{
 		{
@@ -53,7 +53,7 @@ func TestPool(t *testing.T) {
 					p.RemoveBackend(b)
 					actual, found := p.GetBackend(b.URL)
 					require.False(t, found)
-					require.Nil(t, actual)
+					require.Equal(t, Backend{}, actual)
 				}
 			},
 		},

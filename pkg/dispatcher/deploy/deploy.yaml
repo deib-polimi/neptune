@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatcher
+  namespace: openfaas-fn
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dispatcher
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dispatcher
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: community-controller
+      nodeSelector:
+        kubernetes.io/hostname: kind-worker
+      containers:
+      - name: system-controller
+        image: systemautoscaler/dispatcher:dev
+        imagePullPolicy: Always
+        command:
+          - "dispatcher"
+          - "--node=kind-worker"
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi

@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"math"
+	"net/url"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ type ExposedMetrics struct {
 // RawMetricData represents the single data point collected by each load balancer
 type RawMetricData struct {
 	// Backend is the pod which has processed the request
-	Backend string
+	Backend *url.URL
 	// Value is the response time of the request
 	Value float64
 	// FunctionURL is the URL of the function invo
@@ -95,7 +96,7 @@ func (b BackendMetrics) metrics() *ExposedMetrics {
 
 // FunctionMetrics are the metrics computed per function using all its backends
 type FunctionMetrics struct {
-	metrics map[string]*BackendMetrics
+	metrics map[*url.URL]*BackendMetrics
 	lock    sync.RWMutex
 	WindowParameters
 }
@@ -103,14 +104,14 @@ type FunctionMetrics struct {
 // NewFunctionMetrics returns a new function metrics
 func NewFunctionMetrics(params WindowParameters) *FunctionMetrics {
 	return &FunctionMetrics{
-		metrics:          make(map[string]*BackendMetrics),
+		metrics:          make(map[*url.URL]*BackendMetrics),
 		lock:             sync.RWMutex{},
 		WindowParameters: params,
 	}
 }
 
 // GetBackend retrieves a specific backend metrics
-func (f *FunctionMetrics) GetBackend(b string) (metrics *BackendMetrics, found bool) {
+func (f *FunctionMetrics) GetBackend(b *url.URL) (metrics *BackendMetrics, found bool) {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	metrics, found = f.metrics[b]
@@ -119,8 +120,8 @@ func (f *FunctionMetrics) GetBackend(b string) (metrics *BackendMetrics, found b
 
 // SyncBackends keeps the backend pool up to date. It adds the new one
 // and removes the ones not needed anymore
-func (f *FunctionMetrics) SyncBackends(backends []string) {
-	deleteSet := make(map[string]bool)
+func (f *FunctionMetrics) SyncBackends(backends []*url.URL) {
+	deleteSet := make(map[*url.URL]bool)
 
 	// populate the set with the current pool
 	for actualBackend := range f.metrics {
@@ -140,7 +141,7 @@ func (f *FunctionMetrics) SyncBackends(backends []string) {
 }
 
 // SetBackend adds a backend that server a function if it does not already exists
-func (f *FunctionMetrics) SetBackend(b string) {
+func (f *FunctionMetrics) SetBackend(b *url.URL) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	if _, exists := f.metrics[b]; !exists {
@@ -149,7 +150,7 @@ func (f *FunctionMetrics) SetBackend(b string) {
 }
 
 // RemoveBackend removes a backend from the function pool
-func (f *FunctionMetrics) RemoveBackend(b string) {
+func (f *FunctionMetrics) RemoveBackend(b *url.URL) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	delete(f.metrics, b)

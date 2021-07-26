@@ -52,9 +52,11 @@ type LoadBalancerController struct {
 
 	listers informers.Listers
 
-	nodeSynced cache.InformerSynced
-
-	communityScheduleSynced cache.InformerSynced
+	nodeSynced                    cache.InformerSynced
+	communityConfigurationsSynced cache.InformerSynced
+	communitySchedulesSynced      cache.InformerSynced
+	functionSynced                cache.InformerSynced
+	deploymentsSynced             cache.InformerSynced
 
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -95,17 +97,20 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &LoadBalancerController{
-		edgeAutoscalerClientSet: eaClientSet,
-		kubernetesClientset:     kubernetesClientset,
-		recorder:                recorder,
-		listers:                 informers.GetListers(),
-		nodeSynced:              informers.Node.Informer().HasSynced,
-		communityScheduleSynced: informers.CommunitySchedule.Informer().HasSynced,
-		workqueue:               workqueue.NewQueue("ConfigMapQueue"),
-		requestqueue:            queue.NewRequestQueue(),
-		monitoringChan:          monitoringChan,
-		balancers:               make(map[string]*balancer.LoadBalancer),
-		node:                    node,
+		edgeAutoscalerClientSet:       eaClientSet,
+		kubernetesClientset:           kubernetesClientset,
+		recorder:                      recorder,
+		listers:                       informers.GetListers(),
+		nodeSynced:                    informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
+		communitySchedulesSynced:      informers.CommunitySchedule.Informer().HasSynced,
+		deploymentsSynced:             informers.Deployment.Informer().HasSynced,
+		functionSynced:                informers.Function.Informer().HasSynced,
+		workqueue:                     workqueue.NewQueue("ConfigMapQueue"),
+		requestqueue:                  queue.NewRequestQueue(),
+		monitoringChan:                monitoringChan,
+		balancers:                     make(map[string]*balancer.LoadBalancer),
+		node:                          node,
 	}
 
 	klog.Info("Setting up event handlers")
@@ -135,9 +140,12 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 
 	if ok := cache.WaitForCacheSync(
 		stopCh,
-		//TODO: change with proper CRD
-		c.communityScheduleSynced,
-		c.nodeSynced); !ok {
+		c.communityConfigurationsSynced,
+		c.communitySchedulesSynced,
+		c.deploymentsSynced,
+		c.nodeSynced,
+		c.functionSynced,
+	); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -145,7 +153,7 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 
 	//TODO: set port with env var
 	//Listen for incoming request
-	go c.listenAndServe(80)
+	go c.listenAndServe(8080)
 
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
@@ -165,7 +173,7 @@ func (c *LoadBalancerController) listenAndServe(port int) {
 		Handler: http.HandlerFunc(c.enqueueRequest),
 	}
 
-	klog.Info("server listener started at :%d\n", port)
+	klog.Infof("server listener started at :%d\n", port)
 
 	err := c.serverListener.ListenAndServe()
 
@@ -180,7 +188,7 @@ func (c *LoadBalancerController) runStandardWorker() {
 
 func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
 	// TODO: a better way would be to check for openfaas-gateway
-	if strings.Contains(r.URL.Host, "/function/") {
+	if strings.Contains(r.RequestURI, "/function/") {
 		c.requestqueue.Enqueue(&queue.HTTPRequest{
 			ResponseWriter: w,
 			Request:        r,
@@ -220,13 +228,14 @@ func (c *LoadBalancerController) Shutdown() {
 	utilruntime.HandleCrash()
 }
 
+// format: http://../function/<namespace>/<function-name>
 func functionName(url *url.URL) string {
-	fragments := strings.Split(url.Host, "/")
+	fragments := strings.Split(url.Path, "/")
 	var index = 0
 	for index = range fragments {
 		if fragments[index] == "function" {
 			break
 		}
 	}
-	return fragments[index+1]
+	return fragments[index+1] + "/" + fragments[index+2]
 }

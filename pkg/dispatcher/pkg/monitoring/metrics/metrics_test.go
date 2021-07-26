@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -85,16 +86,16 @@ func TestBackendMetrics(t *testing.T) {
 func TestFunctionMetrics(t *testing.T) {
 	testcases := []struct {
 		description  string
-		input        map[string][]float64
+		input        map[*url.URL][]float64
 		testFunction func(f *FunctionMetrics) float64
 		desired      float64
 	}{
 		{
 			description: "test response time",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {3.0, 4.0, 5.0},
-				"foobar": {5.0, 6.0, 7.0},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {3.0, 4.0, 5.0},
+				{Host: "foobar"}: {5.0, 6.0, 7.0},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.ResponseTime()
@@ -103,10 +104,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test one empty response time",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {2.0},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {2.0},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.ResponseTime()
@@ -115,10 +116,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test all empty response time",
-			input: map[string][]float64{
-				"foo":    {},
-				"bar":    {},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {},
+				{Host: "bar"}:    {},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.ResponseTime()
@@ -127,10 +128,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test request count",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {3.0, 4.0, 5.0},
-				"foobar": {5.0, 6.0, 7.0},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {3.0, 4.0, 5.0},
+				{Host: "foobar"}: {5.0, 6.0, 7.0},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.RequestCount()
@@ -139,10 +140,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test one empty request count",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {3.0, 4.0, 5.0},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {3.0, 4.0, 5.0},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.RequestCount()
@@ -151,10 +152,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test all empty request count",
-			input: map[string][]float64{
-				"foo":    {},
-				"bar":    {},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {},
+				{Host: "bar"}:    {},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.RequestCount()
@@ -163,10 +164,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test throughput",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {3.0, 4.0, 5.0},
-				"foobar": {5.0, 6.0, 7.0},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {3.0, 4.0, 5.0},
+				{Host: "foobar"}: {5.0, 6.0, 7.0},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.Throughput()
@@ -175,10 +176,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test one empty throughput",
-			input: map[string][]float64{
-				"foo":    {1.0, 2.0, 3.0},
-				"bar":    {3.0, 4.0, 5.0},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {1.0, 2.0, 3.0},
+				{Host: "bar"}:    {3.0, 4.0, 5.0},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.Throughput()
@@ -187,10 +188,10 @@ func TestFunctionMetrics(t *testing.T) {
 		},
 		{
 			description: "test all empty throughput",
-			input: map[string][]float64{
-				"foo":    {},
-				"bar":    {},
-				"foobar": {},
+			input: map[*url.URL][]float64{
+				{Host: "foo"}:    {},
+				{Host: "bar"}:    {},
+				{Host: "foobar"}: {},
 			},
 			testFunction: func(f *FunctionMetrics) float64 {
 				return f.Throughput()

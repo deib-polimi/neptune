@@ -1,6 +1,8 @@
 package monitoring
 
 import (
+	"net/url"
+
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	"github.com/modern-go/concurrent"
 )
@@ -10,7 +12,7 @@ type BackendList struct {
 	// FunctionURL is the URL of the function invo
 	FunctionURL string
 	// Backends are the backends that serves a function
-	Backends []string
+	Backends []*url.URL
 }
 
 // DataStore is the main data structure holding all the metrics
@@ -72,7 +74,7 @@ func (ds *DataStore) handleRawData(metric metrics.RawMetricData) {
 
 //TODO: Everything is good if we assume that a balancer serves all possible functions. Otherwise we should implement a cleaning mechanism to remove old functions from the data store
 
-func (ds *DataStore) updateBackends(function string, backends []string) {
+func (ds *DataStore) updateBackends(function string, backends []*url.URL) {
 	functionBackends, found := ds.metrics.Load(function)
 	if !found {
 		return

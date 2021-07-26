@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -19,17 +20,17 @@ func TestHandleRawData(t *testing.T) {
 			description: "one backend per function",
 			input: []metrics.RawMetricData{
 				{
-					Backend:     "foo",
+					Backend:     &url.URL{Host: "foo"},
 					FunctionURL: "function-1",
 					Value:       1.0,
 				},
 				{
-					Backend:     "foo",
+					Backend:     &url.URL{Host: "foo"},
 					FunctionURL: "function-1",
 					Value:       6.0,
 				},
 				{
-					Backend:     "foo",
+					Backend:     &url.URL{Host: "foo"},
 					FunctionURL: "function-1",
 					Value:       8.0,
 				},
@@ -45,17 +46,17 @@ func TestHandleRawData(t *testing.T) {
 			description: "two backend per function",
 			input: []metrics.RawMetricData{
 				{
-					Backend:     "foo",
+					Backend:     &url.URL{Host: "foo"},
 					FunctionURL: "function-1",
 					Value:       1.0,
 				},
 				{
-					Backend:     "bar",
+					Backend:     &url.URL{Host: "bar"},
 					FunctionURL: "function-1",
 					Value:       6.0,
 				},
 				{
-					Backend:     "foo",
+					Backend:     &url.URL{Host: "foo"},
 					FunctionURL: "function-1",
 					Value:       8.0,
 				},

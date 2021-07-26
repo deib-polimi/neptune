@@ -1,5 +1,5 @@
 BUILD_SETTINGS = CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-IMAGE = community-controller
+IMAGE = dispatcher
 IMAGE_VERSION = $(shell git tag --points-at HEAD | sed '/$(IMAGE)\/.*/!s/.*//' | sed 's/\//:/')
 REPO = systemautoscaler
 
@@ -39,3 +39,10 @@ clean:
 	@rm -rf ./$(IMAGE)
 	@go clean -cache
 	@rm -rf *.out
+
+dev:
+	echo "Building dev release"; \
+	$(BUILD_SETTINGS) go build -trimpath -o "$(IMAGE)" ./main.go; \
+	docker build -t $(REPO)/$(IMAGE):dev . ;\
+	docker push $(REPO)/$(IMAGE):dev ; \
+	echo "Dev release built and pushed"; \

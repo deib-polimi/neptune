@@ -12,6 +12,7 @@ import (
 	monitoringmetrics "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog/v2"
 )
 
 type requestCount int
@@ -47,20 +48,24 @@ func NewLoadBalancer(monitoringChan chan<- monitoringmetrics.RawMetricData) *Loa
 
 // Balance forwards to any of the active backends the incoming request
 func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
-	peer := lb.serverPool.NextBackend()
-	if peer != nil {
-		requestTime := time.Now()
-		peer.ReverseProxy.ServeHTTP(w, r)
-		responseTime := time.Now()
-		delta := responseTime.Sub(requestTime)
-		lb.metricChan <- monitoringmetrics.RawMetricData{
-			Backend:     peer.URL.Host,
-			Value:       float64(delta.Milliseconds()),
-			FunctionURL: r.URL.Host,
-		}
-		return
+	peer, err := lb.serverPool.NextBackend()
+
+	if err != nil {
+		http.Error(w, "Service not available", http.StatusServiceUnavailable)
 	}
-	http.Error(w, "Service not available", http.StatusServiceUnavailable)
+
+	klog.Infof("Serving request: %v forwarding to pod: %v", r.URL.Scheme+"//"+r.Host+r.URL.Path, peer.URL.Host)
+	requestTime := time.Now()
+	peer.ReverseProxy.ServeHTTP(w, r)
+	responseTime := time.Now()
+	delta := responseTime.Sub(requestTime)
+	lb.metricChan <- monitoringmetrics.RawMetricData{
+		Backend:     peer.URL,
+		Value:       float64(delta.Milliseconds()),
+		FunctionURL: r.URL.Host,
+	}
+	return
+
 }
 
 // AddServer adds a new backend to the server pool
@@ -75,11 +80,12 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, workload *resource.Quantit
 		})
 	}
 
-	lb.serverPool.SetBackend(&pool.Backend{
-		URL: serverURL,
-		// Alive:        true,
+	b := pool.Backend{
+		URL:          serverURL,
 		ReverseProxy: proxy,
-	}, workload)
+	}
+
+	lb.serverPool.SetBackend(b, workload)
 }
 
 // DeleteServer removes a backend from the pool
