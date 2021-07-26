@@ -54,7 +54,7 @@ func TestReverseProxy(t *testing.T) {
 			description: "Test balancer redirection",
 			backends: []*url.URL{
 				{
-					Host:   "127.0.0.1:8080",
+					Host:   "127.0.0.1:8081",
 					Scheme: "http",
 				},
 			},
@@ -90,7 +90,7 @@ func TestReverseProxy(t *testing.T) {
 
 			req := &http.Request{
 				URL: &url.URL{
-					Host:   "127.0.0.1:8080",
+					Host:   "127.0.0.1:8081",
 					Scheme: "http",
 				},
 			}

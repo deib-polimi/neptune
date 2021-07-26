@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"time"
+
 	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
-	"net/http"
-	"time"
 )
 
 var (
@@ -157,23 +158,15 @@ func (s *Server) admit(request *admissionv1.AdmissionRequest) *admissionv1.Admis
 
 	// Check if the deployment should be handled by the webhook
 	for _, val := range s.config.namespaces {
-<<<<<<< HEAD
 		schedulerName, ok := deployment.Spec.Template.Labels["edgeautoscaler.polimi.it/scheduler"]
 		if val == deployment.Namespace && ok {
-=======
-		if val == deployment.Namespace {
->>>>>>> feat: partial features
 
 			// Generate patch
 			var patch []patchOperation
 			patch = append(patch, patchOperation{
 				Op:    "add",
 				Path:  "/spec/template/spec/schedulerName",
-<<<<<<< HEAD
 				Value: schedulerName,
-=======
-				Value: s.config.schedulerName,
->>>>>>> feat: partial features
 			})
 			patchBytes, err := json.Marshal(patch)
 			if err != nil {
@@ -193,7 +186,7 @@ func (s *Server) admit(request *admissionv1.AdmissionRequest) *admissionv1.Admis
 	}
 
 	// Return the admission response without patch
-	klog.Infof("Namespace %v not in the set of namespaces handled by the webhook",  deployment.Namespace)
+	klog.Infof("Namespace %v not in the set of namespaces handled by the webhook", deployment.Namespace)
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,
 		Result:  &metav1.Status{Status: "Success", Message: ""},

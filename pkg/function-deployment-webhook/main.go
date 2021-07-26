@@ -1,12 +1,13 @@
 package main
 
 import (
-	webhook "github.com/lterrac/edge-autoscaler/pkg/function-deployment-webhook/pkg/controller"
-	"k8s.io/klog/v2"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	webhook "github.com/lterrac/edge-autoscaler/pkg/function-deployment-webhook/pkg/controller"
+	"k8s.io/klog/v2"
 )
 
 func main() {
@@ -21,13 +22,9 @@ func main() {
 	config := webhook.NewConfig(schedulerName, certPath, keyPath, namespacesList)
 	server := webhook.NewServer(config)
 
-<<<<<<< HEAD
 	klog.Infof("Starting webhook server")
 	server.Start()
 	klog.Infof("Webhook server started")
-=======
-	server.Start()
->>>>>>> feat: partial features
 
 	// listening OS shutdown signal
 	signalChan := make(chan os.Signal, 1)
