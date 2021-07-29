@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
@@ -108,7 +109,8 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 					// sync load balancer backends with the new rules
 					if !lb.ServerExists(destinationURL) {
-						lb.AddServer(destinationURL, &workload, c.requestqueue.Enqueue)
+						//TODO: remove recovery func
+						lb.AddServer(destinationURL, &workload, func(req *queue.HTTPRequest) {})
 					} else {
 						lb.UpdateWorkload(destinationURL, &workload)
 					}

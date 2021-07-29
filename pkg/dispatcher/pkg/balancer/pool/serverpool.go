@@ -42,6 +42,7 @@ func (s *ServerPool) RemoveBackend(b Backend) {
 // GetBackend returns a backend given its URL. It returns the backend and bool
 // if the server exists
 func (s *ServerPool) GetBackend(url *url.URL) (backend Backend, found bool) {
+	found = false
 	s.backends.Range(func(key, value interface{}) bool {
 		if key.(Backend).URL.String() == url.String() {
 			backend = key.(Backend)

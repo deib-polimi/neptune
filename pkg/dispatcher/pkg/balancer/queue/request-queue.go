@@ -10,6 +10,7 @@ import (
 type HTTPRequest struct {
 	ResponseWriter http.ResponseWriter
 	Request        *http.Request
+	ResponseChan   chan<- struct{}
 }
 
 //TODO: maybe we should create an interface to change the current queue implementation with workqueue.NamedRateLimitingQueue

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
@@ -9,6 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
+
+// TODO: move in utils package
+// TODO: there's no need to attach those functions to the controller
 
 // GetPodsOfFunction returns a list of pods which is related to a given function
 func (c *CommunityController) GetPodsOfFunction(function *openfaasv1.Function) ([]*corev1.Pod, error) {

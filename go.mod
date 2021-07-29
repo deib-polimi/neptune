@@ -13,6 +13,7 @@ require (
 	github.com/onsi/gomega v1.13.0
 	github.com/openfaas/faas-netes v0.0.0-20210722152123-f0519195a78b
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3

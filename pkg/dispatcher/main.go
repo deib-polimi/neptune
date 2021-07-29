@@ -80,7 +80,7 @@ func main() {
 	eaInformerFactory.Start(stopCh)
 	openfaasInformerFactory.Start(stopCh)
 
-	if err = lbController.Run(1, stopCh); err != nil {
+	if err = lbController.Run(2, stopCh); err != nil {
 		klog.Fatalf("Error running system controller: %s", err.Error())
 	}
 	defer lbController.Shutdown()

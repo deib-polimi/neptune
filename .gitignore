@@ -24,3 +24,4 @@ pkg/*/function-deployment-webhook
 .idea/
 pkg/function-deployment-webhook/deploy/server-key.pem
 pkg/function-deployment-webhook/deploy/server-cert.pem
+pkg/dispatcher/dispatcher

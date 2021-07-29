@@ -65,13 +65,13 @@ type LoadBalancerController struct {
 	// workqueue contains all the communityconfigurations to sync
 	workqueue workqueue.Queue
 
-	requestqueue *queue.RequestQueue
-
 	serverListener http.Server
 
 	monitoringChan chan<- monitoringmetrics.RawMetricData
 
 	backendChan chan<- monitoring.BackendList
+
+	requestChan chan *queue.HTTPRequest
 
 	// node is the node name on which the controller is running
 	node string
@@ -107,8 +107,8 @@ func NewController(
 		deploymentsSynced:             informers.Deployment.Informer().HasSynced,
 		functionSynced:                informers.Function.Informer().HasSynced,
 		workqueue:                     workqueue.NewQueue("ConfigMapQueue"),
-		requestqueue:                  queue.NewRequestQueue(),
 		monitoringChan:                monitoringChan,
+		requestChan:                   make(chan *queue.HTTPRequest),
 		balancers:                     make(map[string]*balancer.LoadBalancer),
 		node:                          node,
 	}
@@ -189,17 +189,21 @@ func (c *LoadBalancerController) runStandardWorker() {
 func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
 	// TODO: a better way would be to check for openfaas-gateway
 	if strings.Contains(r.RequestURI, "/function/") {
-		c.requestqueue.Enqueue(&queue.HTTPRequest{
+		responseChan := make(chan struct{})
+		c.requestChan <- &queue.HTTPRequest{
 			ResponseWriter: w,
 			Request:        r,
-		})
+			ResponseChan:   responseChan,
+		}
+
+		// wait until request is processed
+		<-responseChan
 
 		return
 	}
 
 	// forward any other request
-	go httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
-
+	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
 }
 
 func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
@@ -207,18 +211,18 @@ func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
 		select {
 		case <-stopCh:
 			return
+		case req := <-c.requestChan:
+			if req == nil {
+				continue
+			}
+
+			// TODO: get correct function name from request
+			if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
+				balancer.Balance(req.ResponseWriter, req.Request)
+			}
+			klog.Info("processed request, closing chan")
+			close(req.ResponseChan)
 		default:
-		}
-
-		req := c.requestqueue.Dequeue()
-
-		if req == nil {
-			continue
-		}
-
-		// TODO: get correct function name from request
-		if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
-			balancer.Balance(req.ResponseWriter, req.Request)
 		}
 	}
 }
