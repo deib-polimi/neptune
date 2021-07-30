@@ -1,9 +1,9 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: "openfaas-fn.function-deployment-custom-scheduler.svc"
+  name: "kube-system.function-deployment-custom-scheduler.svc"
 webhooks:
-  - name: "openfaas-fn.function-deployment-custom-scheduler.svc"
+  - name: "kube-system.function-deployment-custom-scheduler.svc"
     rules:
       - apiGroups:   ["*"]
         apiVersions: ["*"]
@@ -12,7 +12,7 @@ webhooks:
         scope:       "Namespaced"
     clientConfig:
       service:
-        namespace: openfaas-fn
+        namespace: kube-system
         name: function-deployment-custom-scheduler
         path: /mutate
         port: 8443

@@ -7,15 +7,15 @@ kubectl create ns openfaas-fn
 helm install openfaas-kind openfaas/openfaas  --namespace openfaas --set basic_auth=false --set functionNamespace=openfaas-fn --set operator.create=true
 
 # otherwise install with arkade
-# arkade install openfaas --operator
+#arkade install openfaas --operator
 
 # crd
 make manifests
 kubectl apply -f ./config/crd/bases
 
 # generate admission webhook certificates and secret in tmpdir
-chmod +x ./pkg/function-deployment-webhook/deploy/gen-certificates.sh 
-./pkg/function-deployment-webhook/deploy/gen-certificates.sh --namespace openfaas-fn --service function-deployment-custom-scheduler --secret function-deployment-custom-scheduler
+chmod +x ./pkg/function-deployment-webhook/deploy/gen-certificates.sh
+./pkg/function-deployment-webhook/deploy/gen-certificates.sh --namespace kube-system --service function-deployment-custom-scheduler --secret function-deployment-custom-scheduler
 
 # patch new mutitating webhook
 chmod +x ./pkg/function-deployment-webhook/deploy/patch-manifests.sh
