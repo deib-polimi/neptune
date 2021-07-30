@@ -58,7 +58,12 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Service not available", http.StatusServiceUnavailable)
 	}
 
-	upstreamReq := buildUpstreamRequest(r, fmt.Sprintf("%v://%v", peer.URL.Scheme, peer.URL.Host), "")
+	transformer := UpstreamRequestBuilder{
+		Request: r,
+		Backend: peer,
+	}
+
+	upstreamReq := transformer.Build()
 
 	if upstreamReq.Body != nil {
 		defer upstreamReq.Body.Close()
@@ -66,7 +71,7 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("forwardRequest: %s %s\n", upstreamReq.Host, upstreamReq.URL.String())
 
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*30)
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*90)
 	defer cancel()
 
 	res, resErr := http.DefaultClient.Do(upstreamReq.WithContext(ctx))
@@ -91,86 +96,10 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		io.CopyBuffer(w, res.Body, nil)
 	}
 
-	// // TODO: move in a URLTransformer struct to change the host and remove /functino/<namespace>/<function> from path
-	// reqClone := r.Clone(context.Background())
-	// reqClone.Host = peer.URL.Host
-	// reqClone.URL.Path = ""
-	// reqClone.URL.Scheme = "http"
-	// klog.Infof("Serving request: %v forwarding to pod: %v", reqClone.URL.Scheme+"//"+reqClone.Host+reqClone.URL.Path, peer.URL.Host)
-
-	// requestTime := time.Now()
-	// res, err := http.DefaultClient.Do(reqClone)
-	// if err != nil {
-	// 	klog.Errorf("Error forwarding request: %v", err)
-	// 	return
-	// }
-
-	// copyHeaders(w.Header(), &res.Header)
-
-	// // Write status code
-	// w.WriteHeader(res.StatusCode)
-
-	// if res.Body != nil {
-	// 	// Copy the body over
-	// 	io.CopyBuffer(w, res.Body, nil)
-	// }
-
-	// // peer.ReverseProxy.ServeHTTP(w, reqClone)
-	// responseTime := time.Now()
-	// delta := responseTime.Sub(requestTime)
-	// lb.metricChan <- monitoringmetrics.RawMetricData{
-	// 	Backend:     peer.URL,
-	// 	Value:       float64(delta.Milliseconds()),
-	// 	FunctionURL: r.URL.Host,
-	// }
 	klog.Info("request served")
 
 	return
 
-}
-func copyHeaders(destination http.Header, source *http.Header) {
-	for k, v := range *source {
-		vClone := make([]string, len(v))
-		copy(vClone, v)
-		(destination)[k] = vClone
-	}
-}
-func deleteHeaders(target *http.Header, exclude *[]string) {
-	for _, h := range *exclude {
-		target.Del(h)
-	}
-}
-
-func buildUpstreamRequest(r *http.Request, baseURL string, requestURL string) *http.Request {
-	url := baseURL + requestURL
-
-	if len(r.URL.RawQuery) > 0 {
-		url = fmt.Sprintf("%s?%s", url, r.URL.RawQuery)
-	}
-
-	// upstreamReq, err := http.NewRequest(http.MethodPost, url, nil)
-	upstreamReq, err := http.NewRequest(r.Method, url, nil)
-
-	if err != nil {
-		klog.Errorf("Error creating upstream request: %v", err)
-		return nil
-	}
-
-	copyHeaders(upstreamReq.Header, &r.Header)
-
-	if len(r.Host) > 0 && upstreamReq.Header.Get("X-Forwarded-Host") == "" {
-		upstreamReq.Header["X-Forwarded-Host"] = []string{r.Host}
-	}
-
-	if upstreamReq.Header.Get("X-Forwarded-For") == "" {
-		upstreamReq.Header["X-Forwarded-For"] = []string{r.RemoteAddr}
-	}
-
-	if r.Body != nil {
-		upstreamReq.Body = r.Body
-	}
-
-	return upstreamReq
 }
 
 // AddServer adds a new backend to the server pool

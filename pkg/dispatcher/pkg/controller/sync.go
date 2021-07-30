@@ -101,6 +101,7 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 					// TODO: find better way to retrieve function port
 					klog.Info(fmt.Sprintf("adding balancer for http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
 					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
+					destinationURL.Scheme = "http"
 
 					if err != nil {
 						utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))

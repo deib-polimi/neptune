@@ -159,9 +159,9 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
 	}
 
-	for i := 0; i < threadiness; i++ {
-		go c.dispatchRequest(stopCh)
-	}
+	// for i := 0; i < threadiness; i++ {
+	// 	go c.dispatchRequest(stopCh)
+	// }
 
 	return nil
 }
@@ -189,16 +189,11 @@ func (c *LoadBalancerController) runStandardWorker() {
 func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
 	// TODO: a better way would be to check for openfaas-gateway
 	if strings.Contains(r.RequestURI, "/function/") {
-		responseChan := make(chan struct{})
-		c.requestChan <- &queue.HTTPRequest{
-			ResponseWriter: w,
-			Request:        r,
-			ResponseChan:   responseChan,
+		// TODO: get correct function name from request
+		if balancer, exist := c.balancers[NamespaceNameFunction(r.URL)]; exist {
+			balancer.Balance(w, r)
 		}
-
-		// wait until request is processed
-		<-responseChan
-
+		klog.Info("processed request, closing chan")
 		return
 	}
 
@@ -206,26 +201,46 @@ func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.R
 	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
 }
 
-func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
-	for {
-		select {
-		case <-stopCh:
-			return
-		case req := <-c.requestChan:
-			if req == nil {
-				continue
-			}
+// func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
+// 	// TODO: a better way would be to check for openfaas-gateway
+// 	if strings.Contains(r.RequestURI, "/function/") {
+// 		responseChan := make(chan struct{})
+// 		c.requestChan <- &queue.HTTPRequest{
+// 			ResponseWriter: w,
+// 			Request:        r,
+// 			ResponseChan:   responseChan,
+// 		}
 
-			// TODO: get correct function name from request
-			if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
-				balancer.Balance(req.ResponseWriter, req.Request)
-			}
-			klog.Info("processed request, closing chan")
-			close(req.ResponseChan)
-		default:
-		}
-	}
-}
+// 		// wait until request is processed
+// 		<-responseChan
+
+// 		return
+// 	}
+
+// 	// forward any other request
+// 	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
+// }
+
+// func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
+// 	for {
+// 		select {
+// 		case <-stopCh:
+// 			return
+// 		case req := <-c.requestChan:
+// 			if req == nil {
+// 				continue
+// 			}
+
+// 			// TODO: get correct function name from request
+// 			if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
+// 				balancer.Balance(req.ResponseWriter, req.Request)
+// 			}
+// 			klog.Info("processed request, closing chan")
+// 			close(req.ResponseChan)
+// 		default:
+// 		}
+// 	}
+// }
 
 // Shutdown is called when the controller has finished its work
 func (c *LoadBalancerController) Shutdown() {
@@ -233,7 +248,7 @@ func (c *LoadBalancerController) Shutdown() {
 }
 
 // format: http://../function/<namespace>/<function-name>
-func functionName(url *url.URL) string {
+func NamespaceNameFunction(url *url.URL) string {
 	fragments := strings.Split(url.Path, "/")
 	var index = 0
 	for index = range fragments {

@@ -25,3 +25,4 @@ pkg/*/function-deployment-webhook
 pkg/function-deployment-webhook/deploy/server-key.pem
 pkg/function-deployment-webhook/deploy/server-cert.pem
 pkg/dispatcher/dispatcher
+pkg/dispatcher/pkg/controller/loadbalancer-controller.go
