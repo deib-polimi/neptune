@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring"
-	monitoringmetrics "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
@@ -67,14 +66,20 @@ type LoadBalancerController struct {
 
 	serverListener http.Server
 
-	monitoringChan chan<- monitoringmetrics.RawMetricData
+	// monitoringChan chan<- monitoringmetrics.RawMetricData
 
-	backendChan chan<- monitoring.BackendList
+	// backendChan chan<- monitoring.BackendList
 
-	requestChan chan *queue.HTTPRequest
+	// functionChan chan<- monitoring.FunctionList
+
+	metricChan chan<- metrics.RawResponseTime
 
 	// node is the node name on which the controller is running
 	node string
+
+	// ds *monitoring.DataStore
+
+	persistor *persistor.MetricsPersistor
 }
 
 // NewController returns a new SystemController
@@ -82,7 +87,6 @@ func NewController(
 	kubernetesClientset *kubernetes.Clientset,
 	eaClientSet eaclientset.Interface,
 	informers informers.Informers,
-	monitoringChan chan<- monitoringmetrics.RawMetricData,
 	node string,
 ) *LoadBalancerController {
 
@@ -95,6 +99,11 @@ func NewController(
 	eventBroadcaster.StartStructuredLogging(0)
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
+	// functionChan := make(chan monitoring.FunctionList)
+	// backendChan := make(chan monitoring.BackendList)
+	// monitoringChan := make(chan monitoringmetrics.RawMetricData)
+	metricChan := make(chan metrics.RawResponseTime)
+
 	// Instantiate the Controller
 	controller := &LoadBalancerController{
 		edgeAutoscalerClientSet:       eaClientSet,
@@ -106,12 +115,25 @@ func NewController(
 		communitySchedulesSynced:      informers.CommunitySchedule.Informer().HasSynced,
 		deploymentsSynced:             informers.Deployment.Informer().HasSynced,
 		functionSynced:                informers.Function.Informer().HasSynced,
-		workqueue:                     workqueue.NewQueue("ConfigMapQueue"),
-		monitoringChan:                monitoringChan,
-		requestChan:                   make(chan *queue.HTTPRequest),
-		balancers:                     make(map[string]*balancer.LoadBalancer),
-		node:                          node,
+		workqueue:                     workqueue.NewQueue("CommunityScheduleQueue"),
+		// monitoringChan:                monitoringChan,
+		// backendChan:                   backendChan,
+		// functionChan:                  functionChan,
+		metricChan: metricChan,
+		balancers:  make(map[string]*balancer.LoadBalancer),
+		node:       node,
 	}
+
+	// controller.ds = monitoring.NewDataStore(
+	// 	backendChan,
+	// 	monitoringChan,
+	// 	functionChan,
+	// 	monitoringmetrics.WindowParameters{
+	// 		WindowSize:        1 * time.Second,
+	// 		WindowGranularity: 1 * time.Millisecond,
+	// 	})
+
+	controller.persistor = persistor.NewMetricsPersistor(persistor.NewDBOptions(), metricChan)
 
 	klog.Info("Setting up event handlers")
 
@@ -159,6 +181,17 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
 	}
 
+	err := c.persistor.SetupDBConnection()
+
+	if err != nil {
+		return fmt.Errorf("failed to connect persistor to database: %v", err)
+	}
+
+	c.persistor.PollMetrics()
+
+	// c.ds.Poll()
+	// c.ds.Expose()
+
 	// for i := 0; i < threadiness; i++ {
 	// 	go c.dispatchRequest(stopCh)
 	// }
@@ -200,47 +233,6 @@ func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.R
 	// forward any other request
 	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
 }
-
-// func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
-// 	// TODO: a better way would be to check for openfaas-gateway
-// 	if strings.Contains(r.RequestURI, "/function/") {
-// 		responseChan := make(chan struct{})
-// 		c.requestChan <- &queue.HTTPRequest{
-// 			ResponseWriter: w,
-// 			Request:        r,
-// 			ResponseChan:   responseChan,
-// 		}
-
-// 		// wait until request is processed
-// 		<-responseChan
-
-// 		return
-// 	}
-
-// 	// forward any other request
-// 	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
-// }
-
-// func (c *LoadBalancerController) dispatchRequest(stopCh <-chan struct{}) {
-// 	for {
-// 		select {
-// 		case <-stopCh:
-// 			return
-// 		case req := <-c.requestChan:
-// 			if req == nil {
-// 				continue
-// 			}
-
-// 			// TODO: get correct function name from request
-// 			if balancer, exist := c.balancers[functionName(req.Request.URL)]; exist {
-// 				balancer.Balance(req.ResponseWriter, req.Request)
-// 			}
-// 			klog.Info("processed request, closing chan")
-// 			close(req.ResponseChan)
-// 		default:
-// 		}
-// 	}
-// }
 
 // Shutdown is called when the controller has finished its work
 func (c *LoadBalancerController) Shutdown() {

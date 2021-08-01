@@ -6,7 +6,6 @@ import (
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 
@@ -36,7 +35,10 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 	nodeLabels := node.GetLabels()
 
-	if communityName, exists := nodeLabels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !exists || communityName != name {
+	var community string
+	var exists bool
+
+	if community, exists = nodeLabels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; !exists || community != name {
 		return nil
 	}
 
@@ -60,8 +62,11 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			continue
 		}
 
+		functions := []string{}
+
 		for functionNamespaceName, destinationRules := range functionRules {
 
+			functions = append(functions, functionNamespaceName)
 			funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
 
 			if err != nil {
@@ -82,7 +87,17 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			// create a new load balancer if it does not exist
 			// TODO: check key
 			if lb, exist = c.balancers[functionNamespaceName]; !exist {
-				lb = balancer.NewLoadBalancer(c.monitoringChan)
+				// lb = balancer.NewLoadBalancer(c.monitoringChan)
+
+				lb = balancer.NewLoadBalancer(
+					balancer.NodeInfo{
+						Node:      source,
+						Function:  funcName,
+						Namespace: funcNamespace,
+						Community: community,
+					},
+					c.metricChan,
+				)
 				c.balancers[functionNamespaceName] = lb
 			}
 
@@ -111,7 +126,8 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 					// sync load balancer backends with the new rules
 					if !lb.ServerExists(destinationURL) {
 						//TODO: remove recovery func
-						lb.AddServer(destinationURL, &workload, func(req *queue.HTTPRequest) {})
+						// TODO: add mechanism to detect gpu instead of a hardcoded false bool
+						lb.AddServer(destinationURL, destination, false, &workload, func(req *queue.HTTPRequest) {})
 					} else {
 						lb.UpdateWorkload(destinationURL, &workload)
 					}
@@ -127,11 +143,15 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 				lb.DeleteServer(b)
 			}
 
-			c.backendChan <- monitoring.BackendList{
-				FunctionURL: functionNamespaceName,
-				Backends:    actualBackends,
-			}
+			// c.backendChan <- monitoring.BackendList{
+			// 	FunctionURL: functionNamespaceName,
+			// 	Backends:    actualBackends,
+			// }
 		}
+
+		// c.functionChan <- monitoring.FunctionList{
+		// 	Functions: functions,
+		// }
 	}
 
 	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)

@@ -7,13 +7,12 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/pool"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
-	monitoringmetrics "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
@@ -34,17 +33,33 @@ const (
 	ServerNotFoundError string = "server %s does not exists"
 )
 
+// NodeInfo wraps the info needed by the persistor to save metrics
+type NodeInfo struct {
+	// Node is the name of the node on which the balancer is running
+	Node string
+	// Function is the name of the function to be balanced
+	Function string
+	// Namespace is the namespace of the function
+	Namespace string
+	// Community is the community on which the function is running
+	Community string
+}
+
 // LoadBalancer is the wrapper of the server pool and performs the routing to any of its backends
 type LoadBalancer struct {
 	serverPool *pool.ServerPool
-	metricChan chan<- monitoringmetrics.RawMetricData
+	metricChan chan<- metrics.RawResponseTime
+	NodeInfo
+	// metricChan chan<- monitoringmetrics.RawMetricData
 }
 
 // NewLoadBalancer returns a new LoadBalancer
-func NewLoadBalancer(monitoringChan chan<- monitoringmetrics.RawMetricData) *LoadBalancer {
+func NewLoadBalancer(node NodeInfo, metricChan chan<- metrics.RawResponseTime) *LoadBalancer {
+	// func NewLoadBalancer(monitoringChan chan<- monitoringmetrics.RawMetricData) *LoadBalancer {
 	lb := &LoadBalancer{
+		NodeInfo:   node,
 		serverPool: pool.NewServerPool(),
-		metricChan: monitoringChan,
+		metricChan: metricChan,
 	}
 
 	return lb
@@ -74,12 +89,25 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*90)
 	defer cancel()
 
-	res, resErr := http.DefaultClient.Do(upstreamReq.WithContext(ctx))
+	start := time.Now()
+	res, resErr := peer.Client.Do(upstreamReq.WithContext(ctx))
 
 	if resErr != nil {
 		badStatus := http.StatusBadGateway
 		w.WriteHeader(badStatus)
 		return
+	}
+	delta := time.Since(start)
+
+	lb.metricChan <- metrics.RawResponseTime{
+		Timestamp:   start,
+		Source:      lb.Node,
+		Function:    lb.Function,
+		Destination: peer.Node,
+		Namespace:   lb.Namespace,
+		Community:   lb.Community,
+		Gpu:         peer.HasGpu,
+		Latency:     int(delta.Milliseconds()),
 	}
 
 	if res.Body != nil {
@@ -103,19 +131,8 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddServer adds a new backend to the server pool
-func (lb *LoadBalancer) AddServer(serverURL *url.URL, workload *resource.Quantity, recovery recoveryFunc) {
+func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, workload *resource.Quantity, recovery recoveryFunc) {
 	klog.Infof("Adding server: %v", serverURL.String())
-	proxy := httputil.NewSingleHostReverseProxy(serverURL)
-	proxy.Transport = &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 90 * time.Second,
-		}).DialContext,
-		// TODO: Some of those value should be tuned
-		IdleConnTimeout:       90 * time.Second,
-		ExpectContinueTimeout: 5 * time.Second,
-		MaxIdleConnsPerHost:   1000,
-		MaxIdleConns:          1000,
-	}
 
 	// TODO: this does not work
 	// proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
@@ -128,8 +145,23 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, workload *resource.Quantit
 	// }
 
 	b := pool.Backend{
-		URL:          serverURL,
-		ReverseProxy: proxy,
+		URL:    serverURL,
+		Node:   node,
+		HasGpu: hasGpu,
+		Client: &http.Client{
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: 90 * time.Second,
+				}).DialContext,
+				// TODO: Some of those value should be tuned
+				IdleConnTimeout:       90 * time.Second,
+				ExpectContinueTimeout: 5 * time.Second,
+				MaxIdleConnsPerHost:   1000,
+				MaxIdleConns:          1000,
+				MaxConnsPerHost:       1000,
+			},
+			Timeout: time.Second * 90,
+		},
 	}
 
 	lb.serverPool.SetBackend(b, workload)

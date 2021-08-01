@@ -33,7 +33,7 @@ func healthyHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func fakePoll(c <-chan metrics.RawMetricData) {
+func fakePoll(c <-chan metrics.RawResponseTime) {
 	for {
 		select {
 		case <-c:
@@ -79,13 +79,14 @@ func TestReverseProxy(t *testing.T) {
 				go server.ListenAndServe()
 			}
 
-			monitoringChan := make(chan metrics.RawMetricData)
+			monitoringChan := make(chan metrics.RawResponseTime)
 			go fakePoll(monitoringChan)
 
-			lb := NewLoadBalancer(monitoringChan)
+			lb := NewLoadBalancer(NodeInfo{}, monitoringChan)
+			// lb := NewLoadBalancer(monitoringChan)
 
 			for _, backend := range tt.backends {
-				lb.AddServer(backend, resource.NewMilliQuantity(2, resource.BinarySI), noRecovery)
+				lb.AddServer(backend, "", false, resource.NewMilliQuantity(2, resource.BinarySI), noRecovery)
 			}
 
 			req := &http.Request{

@@ -41,6 +41,10 @@ e2e: install
 	$(call action, e2e)
 	@kubectl delete -f ./config/cluster-conf/e2e-namespace.yaml
 
+metric-db:
+	@cd ./config/metric-db
+	@docker build -t systemautoscaler/database .
+	@docker push -t systemautoscaler/database
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=edgeautoscaler-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases crd:crdVersions={v1}

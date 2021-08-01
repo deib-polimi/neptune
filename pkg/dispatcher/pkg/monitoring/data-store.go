@@ -15,25 +15,31 @@ type BackendList struct {
 	Backends []*url.URL
 }
 
+// FunctionList is used to keep in sync the function actually serverd by a node
+type FunctionList struct {
+	// FunctionURL is the URL of the function invo
+	Functions []string
+}
+
 // DataStore is the main data structure holding all the metrics
 type DataStore struct {
 	backendChan      <-chan BackendList
+	functionChan     <-chan FunctionList
 	metricChan       <-chan metrics.RawMetricData
-	metrics          concurrent.Map
+	metrics          *concurrent.Map
 	windowParameters metrics.WindowParameters
-	exposer          *Exposer
 }
 
 // NewDataStore returns a new DataStore
-func NewDataStore(backendChan <-chan BackendList, metricChan <-chan metrics.RawMetricData, params metrics.WindowParameters) *DataStore {
-	metricMap := concurrent.Map{}
+func NewDataStore(backendChan <-chan BackendList, metricChan <-chan metrics.RawMetricData, functionChan <-chan FunctionList, params metrics.WindowParameters) *DataStore {
+	metricMap := &concurrent.Map{}
+	// TODO: customize window params with env var or flags?
 	return &DataStore{
-		backendChan: backendChan,
-		metricChan:  metricChan,
-		metrics:     metricMap,
-		// TODO: customize with env var?
+		backendChan:      backendChan,
+		metricChan:       metricChan,
+		functionChan:     functionChan,
+		metrics:          metricMap,
 		windowParameters: params,
-		exposer:          NewExposer(metricMap),
 	}
 }
 
@@ -50,11 +56,6 @@ func (ds *DataStore) Poll() {
 			}
 		}
 	}()
-}
-
-// Expose exposes the metrics
-func (ds *DataStore) Expose() {
-	ds.exposer.Run()
 }
 
 func (ds *DataStore) handleRawData(metric metrics.RawMetricData) {

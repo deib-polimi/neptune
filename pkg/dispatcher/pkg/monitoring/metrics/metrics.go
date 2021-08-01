@@ -9,6 +9,18 @@ import (
 	"github.com/asecurityteam/rolling"
 )
 
+// RawResponseTime is the response time for a single http request
+type RawResponseTime struct {
+	Timestamp   time.Time
+	Source      string
+	Destination string
+	Function    string
+	Namespace   string
+	Community   string
+	Gpu         bool
+	Latency     int
+}
+
 // ExposedMetrics is a struct that wraps the exposed metrics
 type ExposedMetrics struct {
 	ResponseTime float64 `json:"response-time"`

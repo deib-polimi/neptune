@@ -5,7 +5,6 @@ import (
 	"time"
 
 	lbcontroller "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/controller"
-	monitoringmetrics "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eainformers "github.com/lterrac/edge-autoscaler/pkg/generated/informers/externalversions"
 	informerswrapper "github.com/lterrac/edge-autoscaler/pkg/informers"
@@ -66,13 +65,10 @@ func main() {
 		Function:               openfaasInformerFactory.Openfaas().V1().Functions(),
 	}
 
-	monitoringChan := make(chan monitoringmetrics.RawMetricData)
-
 	lbController := lbcontroller.NewController(
 		kubernetesClient,
 		eaclient,
 		informers,
-		monitoringChan,
 		node,
 	)
 

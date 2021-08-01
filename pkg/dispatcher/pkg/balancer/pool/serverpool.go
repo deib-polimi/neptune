@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"net/http/httputil"
+	"net/http"
 	"net/url"
 
 	"github.com/modern-go/concurrent"
@@ -12,9 +12,14 @@ import (
 
 // Backend is the default backend wrapper
 type Backend struct {
+	// URL is the pod URL
 	URL *url.URL
-
-	ReverseProxy *httputil.ReverseProxy
+	// Node is the node name on which the pod is running
+	Node string
+	// HasGpu is used to determine if the pod has a GPU attached
+	HasGpu bool
+	// Client is the http client to use to connect to the pod
+	Client *http.Client
 }
 
 // ServerPool contains the backends list
