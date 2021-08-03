@@ -1,9 +1,9 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: "openfaas-fn.function-deployment-custom-scheduler.svc"
+  name: "kube-system.function-deployment-custom-scheduler.svc"
 webhooks:
-  - name: "openfaas-fn.function-deployment-custom-scheduler.svc"
+  - name: "kube-system.function-deployment-custom-scheduler.svc"
     rules:
       - apiGroups:   ["*"]
         apiVersions: ["*"]
@@ -12,11 +12,11 @@ webhooks:
         scope:       "Namespaced"
     clientConfig:
       service:
-        namespace: openfaas-fn
+        namespace: kube-system
         name: function-deployment-custom-scheduler
         path: /mutate
         port: 8443
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1EWXhNREUwTlRZMU4xb1hEVE14TURZd09ERTBOVFkxTjFvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBSzZuClRTNXdiWFhQM0tiMjVCMnNTUjhvY2IzV0ZqTXdEbXQ0bkNVOHlFZ3R6V05zaWd4d0c2NjF3UjdJYktUQXdyTEEKRHJOOEwyZHZSRlRXbVExMThFZk1FMXB6N2h1Uk5FbUUzclFiaDZTc3RFSlBvVjkxdGJ3ZGNtd2pHTC9xOWlYdAp3Y2ZYN1QxWGVMVG9Ea0ZMZTZwbjRLb05vbFZZRW16WFJ3UFM1VjZLTW9zU0VaaDhaOFQzUFhYOG43WHo1cmJvCi9nWkE4Y1lpOXdVbzRWT0hQL0RCMWxmL3FmeCttaUN0RTd2djRVRmozaE5NOFhqV1N5K3hmK0JKaTRIa0M2QXMKODJmLzFObGRUbWVkUVJRZTdUZVM4MzkzNHNKWEsvbkxIa0JZVFJ6Q0xKZ21jajJCdkNRZm42Ty9Uek9FbUtpUwovZTd6c09EcUpPZkVpSmhYb21FQ0F3RUFBYU1qTUNFd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFGSTByNWRSK2RkN0pFU3lJRFl0Ry9YRFV4VUsKRmtYSVBYK3BJTm9heDhiR1Znd255SjRGaHloclpBWG12b0F3dTVjcUM0bFVvWkJLbUtiUUZuRTZVU3ZwSW9HeAphZVdmOGx1bEFsSkhoUlFOK3lzR09ISG1rSXRrSTQ5cERicnIwRU9zNkV4WEpvRjZWYzV6RFNxcVc5UkJrbmQyCkYwNG95eVRZY0lwMmw4d2MzS1hLem1IdlUzSU9RMkZoRlZ3dUo5QVFONnVEZGdISVhUQi9BSmI1LzR3REtZcU4KZStINjREdmpJUW9DcGJKU0FOcGhVL09idUg2eFJKNVVOTFlNaFpmaS80R0tCbFlPczVjQVJZVXhnaUJyWUhGUQpZdXMxNWovMHZjclFhaXBJYm90ZzV2Ri9IWTdhSE5haGs2S29GRmNMSTBrdkd1R0NDVk5pMm9MWWJERT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: ${CA_BUNDLE}
     admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: Some
+    sideEffects: NoneOnDryRun
     timeoutSeconds: 5

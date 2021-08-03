@@ -32,7 +32,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: community-controller
-  namespace: openfaas-fn
+  namespace: kube-system
   apiGroup: ""
 roleRef:
   kind: ClusterRole

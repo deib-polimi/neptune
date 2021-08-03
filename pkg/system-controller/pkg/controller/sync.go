@@ -374,7 +374,7 @@ func NewCommunityController(namespace, name string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: "kube-system",
 			Labels: map[string]string{
 				ealabels.CommunityControllerDeploymentLabel: "",
 			},

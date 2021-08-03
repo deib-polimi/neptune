@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: openfaas-fn
+  namespace: kube-system
   name: function-deployment-custom-scheduler
 spec:
   selector:
