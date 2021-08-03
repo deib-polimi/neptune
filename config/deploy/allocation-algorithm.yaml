@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: allocation-algorithm
-        image: systemautoscaler/allocation-algorithm-rest:0.0.1
+        image: systemautoscaler/allocation-algorithm-rest:dev
         imagePullPolicy: Always
         ports:
         - containerPort: 5000

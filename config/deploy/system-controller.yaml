@@ -19,7 +19,7 @@ spec:
       serviceAccountName: system-controller
       containers:
       - name: system-controller
-        image: systemautoscaler/system-controller:0.0.2
+        image: systemautoscaler/system-controller:dev
         imagePullPolicy: Always
         ports:
         - containerPort: 443

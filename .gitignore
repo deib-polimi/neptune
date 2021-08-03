@@ -26,3 +26,4 @@ pkg/function-deployment-webhook/deploy/server-key.pem
 pkg/function-deployment-webhook/deploy/server-cert.pem
 pkg/dispatcher/dispatcher
 pkg/dispatcher/pkg/controller/loadbalancer-controller.go
+pkg/function-deployment-webhook/deploy/admission-registration-subst.yaml
