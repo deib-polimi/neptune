@@ -7,11 +7,9 @@ import (
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
-	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -104,7 +102,7 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			actualBackends := []*url.URL{}
 
 			for destination, workload := range destinationRules {
-				pods, err := c.GetPodsOfFunctionInNode(function, destination)
+				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination)
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
@@ -156,32 +154,4 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
-}
-
-// GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
-func (c *LoadBalancerController) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string) ([]*corev1.Pod, error) {
-	klog.Infof("controller: %v faas_function: %v ns: %v", function.Name, function.Spec.Name, function.Namespace)
-	selector := labels.SelectorFromSet(
-		map[string]string{
-			"controller":    function.Name,
-			"faas_function": function.Spec.Name,
-		})
-	pods, err := c.listers.PodLister.Pods(function.Namespace).List(selector)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve pods using selector %s with error: %s", selector, err)
-	}
-
-	var podsInNode []*corev1.Pod
-	for _, pod := range pods {
-		if pod.Spec.NodeName == nodeName {
-			podsInNode = append(podsInNode, pod)
-		}
-	}
-
-	if len(podsInNode) == 0 {
-		return nil, fmt.Errorf("no pods found in node %s", nodeName)
-	}
-
-	return podsInNode, nil
 }

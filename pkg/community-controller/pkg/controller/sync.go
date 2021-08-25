@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,17 +34,17 @@ func (c *CommunityController) runScheduler(key string) error {
 		return fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
 
-	delays, err := c.getNodeDelays()
+	delays, err := c.resGetter.GetNodeDelays(c.communityName, c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve node delays with error: %s", err)
 	}
 
-	workloads, err := c.getWorkload()
+	workloads, err := c.resGetter.GetWorkload(c.communityName, c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve node workloads with error: %s", err)
 	}
 
-	maxDelays, err := c.getMaxDelays()
+	maxDelays, err := c.resGetter.GetMaxDelays(c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve max delays with error: %s", err)
 	}
@@ -133,7 +134,7 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 			return fmt.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
 		}
 
-		pods, err := c.GetPodsOfFunction(function)
+		pods, err := c.resGetter.GetPodsOfFunction(function)
 		if err != nil {
 			klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
 			return fmt.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
@@ -185,7 +186,7 @@ func (c *CommunityController) schedulePod(key string) error {
 		return nil
 	}
 
-	function, err := c.GetFunctionOfPod(pod)
+	function, err := c.resGetter.GetFunctionOfPod(pod)
 	if err != nil {
 		klog.Errorf("failed to retrieve function of pod %s/%s, with error %s", namespace, name, err)
 		return err
@@ -197,7 +198,7 @@ func (c *CommunityController) schedulePod(key string) error {
 		return err
 	}
 
-	otherPods, err := c.GetPodsOfFunction(function)
+	otherPods, err := c.resGetter.GetPodsOfFunction(function)
 	if err != nil {
 		klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
 		return err

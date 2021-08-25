@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
@@ -65,6 +66,8 @@ type LoadBalancerController struct {
 	workqueue workqueue.Queue
 
 	serverListener http.Server
+
+	resGetter *apiutils.ResourceGetter
 
 	// monitoringChan chan<- monitoringmetrics.RawMetricData
 
@@ -133,6 +136,7 @@ func NewController(
 	// 		WindowGranularity: 1 * time.Millisecond,
 	// 	})
 
+	controller.resGetter = apiutils.NewResourceGetter(controller.listers.Pods, controller.listers.Functions, controller.listers.NodeLister)
 	controller.persistor = persistor.NewMetricsPersistor(persistor.NewDBOptions(), metricChan)
 
 	klog.Info("Setting up event handlers")
