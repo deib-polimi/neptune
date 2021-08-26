@@ -191,15 +191,7 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 		return fmt.Errorf("failed to connect persistor to database: %v", err)
 	}
 
-	c.persistor.PollMetrics()
-
-	// c.ds.Poll()
-	// c.ds.Expose()
-
-	// for i := 0; i < threadiness; i++ {
-	// 	go c.dispatchRequest(stopCh)
-	// }
-
+	go c.persistor.PollMetrics()
 	return nil
 }
 
