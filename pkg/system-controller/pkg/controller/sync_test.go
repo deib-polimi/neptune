@@ -1,9 +1,10 @@
 package controller
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
 	"strconv"
 	"testing"
+
+	appsv1 "k8s.io/api/apps/v1"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 

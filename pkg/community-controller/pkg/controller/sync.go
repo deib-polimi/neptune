@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +12,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
-
 
 // TODO: the key is not used
 func (c *CommunityController) runScheduler(key string) error {
@@ -34,17 +34,17 @@ func (c *CommunityController) runScheduler(key string) error {
 		return fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
 
-	delays, err := c.getNodeDelays()
+	delays, err := c.resGetter.GetNodeDelays(c.communityName, c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve node delays with error: %s", err)
 	}
 
-	workloads, err := c.getWorkload()
+	workloads, err := c.resGetter.GetWorkload(c.communityName, c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve node workloads with error: %s", err)
 	}
 
-	maxDelays, err := c.getMaxDelays()
+	maxDelays, err := c.resGetter.GetMaxDelays(c.communityNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve max delays with error: %s", err)
 	}
@@ -134,7 +134,7 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 			return fmt.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
 		}
 
-		pods, err := c.GetPodsOfFunction(function)
+		pods, err := c.resGetter.GetPodsOfFunction(function)
 		if err != nil {
 			klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
 			return fmt.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
@@ -143,8 +143,7 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 		for _, pod := range pods {
 			// If the pod has been scheduled but on a node which is not present in the community schedule allocation
 			if len(pod.Spec.NodeName) != 0 {
-				if community, ok := pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()];
-				ok && community == c.communityName{
+				if community, ok := pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok && community == c.communityName {
 					if _, ok := cs.Spec.Allocations[fkey][pod.Spec.NodeName]; !ok {
 						klog.Info(cs.Spec.Allocations)
 						klog.Info(pod.Spec.NodeName)
@@ -187,7 +186,7 @@ func (c *CommunityController) schedulePod(key string) error {
 		return nil
 	}
 
-	function, err := c.GetFunctionOfPod(pod)
+	function, err := c.resGetter.GetFunctionOfPod(pod)
 	if err != nil {
 		klog.Errorf("failed to retrieve function of pod %s/%s, with error %s", namespace, name, err)
 		return err
@@ -199,7 +198,7 @@ func (c *CommunityController) schedulePod(key string) error {
 		return err
 	}
 
-	otherPods, err := c.GetPodsOfFunction(function)
+	otherPods, err := c.resGetter.GetPodsOfFunction(function)
 	if err != nil {
 		klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
 		return err
@@ -210,8 +209,8 @@ func (c *CommunityController) schedulePod(key string) error {
 		busyNodes[otherPod.Spec.NodeName] = true
 	}
 
-	if _, ok := cs.Spec.Allocations[function.Namespace + "/" + function.Name]; ok {
-		for nodeName, v := range cs.Spec.Allocations[function.Namespace + "/" + function.Name] {
+	if _, ok := cs.Spec.Allocations[function.Namespace+"/"+function.Name]; ok {
+		for nodeName, v := range cs.Spec.Allocations[function.Namespace+"/"+function.Name] {
 			if v {
 				if _, ok = busyNodes[nodeName]; !ok {
 					err = c.bind(pod, nodeName)

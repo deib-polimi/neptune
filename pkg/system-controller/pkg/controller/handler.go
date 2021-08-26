@@ -1,10 +1,11 @@
 package controller
 
 import (
+	"reflect"
+
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
-	"reflect"
 )
 
 // Community Configuration events

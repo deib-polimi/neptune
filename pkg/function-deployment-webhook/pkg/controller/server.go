@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"time"
+
 	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
-	"net/http"
-	"time"
 )
 
 var (
@@ -185,7 +186,7 @@ func (s *Server) admit(request *admissionv1.AdmissionRequest) *admissionv1.Admis
 	}
 
 	// Return the admission response without patch
-	klog.Infof("Namespace %v not in the set of namespaces handled by the webhook",  deployment.Namespace)
+	klog.Infof("Namespace %v not in the set of namespaces handled by the webhook", deployment.Namespace)
 	return &admissionv1.AdmissionResponse{
 		Allowed: true,
 		Result:  &metav1.Status{Status: "Success", Message: ""},

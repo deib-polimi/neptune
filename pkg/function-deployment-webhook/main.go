@@ -1,12 +1,13 @@
 package main
 
 import (
-	webhook "github.com/lterrac/edge-autoscaler/pkg/function-deployment-webhook/pkg/controller"
-	"k8s.io/klog/v2"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	webhook "github.com/lterrac/edge-autoscaler/pkg/function-deployment-webhook/pkg/controller"
+	"k8s.io/klog/v2"
 )
 
 func main() {

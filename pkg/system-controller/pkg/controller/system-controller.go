@@ -25,7 +25,7 @@ const (
 	// SuccessSynced is used as part of the Event 'reason' when a podScale is synced
 	SuccessSynced string = "Synced"
 
-	// MessageResourceSynced is the message used for an Event fired when a podScale
+	// MessageResourceSynced is the message used for an Event fired when a community configuration
 	// is synced successfully
 	MessageResourceSynced string = "Community Settings synced successfully"
 )

@@ -5,11 +5,11 @@ metadata:
 webhooks:
   - name: "kube-system.function-deployment-custom-scheduler.svc"
     rules:
-      - apiGroups:   ["*"]
+      - apiGroups: ["*"]
         apiVersions: ["*"]
-        operations:  ["CREATE", "UPDATE"]
-        resources:   ["deployments"]
-        scope:       "Namespaced"
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments"]
+        scope: "Namespaced"
     clientConfig:
       service:
         namespace: kube-system

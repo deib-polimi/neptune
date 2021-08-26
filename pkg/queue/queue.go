@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -10,13 +11,14 @@ import (
 
 // TODO: should add a way to handle default operations such as CRD added, deleted or updated
 
-// TODO: comment the file
 type syncFunc func(key string) error
 
+// Queue is the wrapper of kuberentes workqueue implementation used by the controllers
 type Queue struct {
 	queue workqueue.RateLimitingInterface
 }
 
+// NewQueue returns a new Queue
 func NewQueue(name string) Queue {
 	return Queue{
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), name),
@@ -67,6 +69,7 @@ func (q *Queue) ProcessNextItem(sync syncFunc) bool {
 	return true
 }
 
+// Enqueue adds the reference for an object (string "<namespace>/<name>") to the queue
 func (q *Queue) Enqueue(obj interface{}) {
 	var key string
 	var err error
@@ -77,6 +80,7 @@ func (q *Queue) Enqueue(obj interface{}) {
 	q.queue.AddRateLimited(key)
 }
 
+// ShutDown stops the queue
 func (q *Queue) ShutDown() {
 	q.queue.ShutDown()
 }

@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"strconv"
 
 	fp "github.com/JohnCGriffin/yogofn"
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
