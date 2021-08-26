@@ -17,16 +17,14 @@ import (
 var resultObjectMeta = v1.ObjectMeta{
 	Name: "node-1",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
-		ealabels.CommunityLabel.WithNamespace("").String():     "community-1",
+		ealabels.CommunityLabel.WithNamespace("").String(): "community-1",
 	},
 }
 
 var notInCommunityMeta = v1.ObjectMeta{
 	Name: "node-4",
 	Labels: map[string]string{
-		ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
-		ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
+		ealabels.CommunityLabel.WithNamespace("").String(): "community-2",
 	},
 }
 
@@ -65,8 +63,7 @@ func listNodeWithDifferentLabel(selector labels.Selector) (ret []*corev1.Node, e
 			ObjectMeta: v1.ObjectMeta{
 				Name: "node-1",
 				Labels: map[string]string{
-					ealabels.CommunityRoleLabel.WithNamespace("").String(): "MEMBER",
-					ealabels.CommunityLabel.WithNamespace("").String():     "community-2",
+					ealabels.CommunityLabel.WithNamespace("").String(): "community-2",
 				},
 			},
 		},
@@ -98,10 +95,8 @@ func TestUpdateCommunityNodes(t *testing.T) {
 					Name: "community-1",
 					Members: []slpaclient.Host{
 						{
-							Name: "node-1",
-							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
-							},
+							Name:   "node-1",
+							Labels: map[string]interface{}{},
 						},
 					},
 				},
@@ -122,10 +117,8 @@ func TestUpdateCommunityNodes(t *testing.T) {
 					Name: "community-1",
 					Members: []slpaclient.Host{
 						{
-							Name: "node-1",
-							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
-							},
+							Name:   "node-1",
+							Labels: map[string]interface{}{},
 						},
 					},
 				},
@@ -146,10 +139,8 @@ func TestUpdateCommunityNodes(t *testing.T) {
 					Name: "community-1",
 					Members: []slpaclient.Host{
 						{
-							Name: "node-1",
-							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
-							},
+							Name:   "node-1",
+							Labels: map[string]interface{}{},
 						},
 					},
 				},
@@ -170,10 +161,8 @@ func TestUpdateCommunityNodes(t *testing.T) {
 					Name: "community-1",
 					Members: []slpaclient.Host{
 						{
-							Name: "node-1",
-							Labels: map[string]interface{}{
-								ealabels.CommunityRoleLabel.WithNamespace("").String(): "LEADER",
-							},
+							Name:   "node-1",
+							Labels: map[string]interface{}{},
 						},
 					},
 				},
