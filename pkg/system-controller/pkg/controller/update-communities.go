@@ -91,10 +91,6 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 				labels[ealabels.CommunityLabel.WithNamespace(namespace).String()] = community.Name
 			}
 
-			if role, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok || role != member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] {
-				labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] = member.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()].(string)
-			}
-
 			_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 			if err != nil {
@@ -118,12 +114,6 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 		}
 
 		delete(labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
-
-		if _, ok := labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; !ok {
-			continue
-		}
-
-		delete(labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 
 		_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
@@ -149,10 +139,6 @@ func (c *CommunityUpdater) ClearNodesLabels(namespace string) error {
 	for _, node := range clusterNodes {
 		if _, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; ok {
 			delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
-		}
-
-		if _, ok := node.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()]; ok {
-			delete(node.Labels, ealabels.CommunityRoleLabel.WithNamespace(namespace).String())
 		}
 
 		_, err = c.updateNode(context.TODO(), node, v1.UpdateOptions{})
