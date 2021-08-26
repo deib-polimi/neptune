@@ -2,11 +2,12 @@ package e2e_test
 
 import (
 	"context"
-	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
-	"k8s.io/utils/pointer"
 	"strconv"
 	"testing"
 	"time"
+
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
+	"k8s.io/utils/pointer"
 
 	"github.com/emirpasic/gods/sets/hashset"
 
@@ -58,7 +59,6 @@ var _ = Describe("System Controller", func() {
 		generatedCommunities := hashset.New()
 
 		ctx := context.Background()
-
 
 		It("Waits for nodes to become ready", func() {
 
@@ -130,18 +130,6 @@ var _ = Describe("System Controller", func() {
 
 				for _, community := range communities {
 					Expect(len(community)).To(BeNumerically("<=", cc.Spec.CommunitySize))
-
-					hasLeader := false
-
-					for _, node := range community {
-						if node.Labels[ealabels.CommunityRoleLabel.WithNamespace(namespace).String()] == ealabels.Leader.String() {
-							hasLeader = true
-						}
-					}
-
-					if !hasLeader {
-						return false
-					}
 				}
 				return true
 			}, 5*timeout, interval).Should(BeTrue())
@@ -276,7 +264,6 @@ var _ = Describe("System Controller", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				var communityLabelExists bool
-				var communityRoleLabelExists bool
 
 				for _, node := range nodes.Items {
 					labels := node.Labels
@@ -287,9 +274,8 @@ var _ = Describe("System Controller", func() {
 					}
 
 					_, communityLabelExists = node.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()]
-					_, communityRoleLabelExists = node.Labels[ealabels.CommunityRoleLabel.WithNamespace(cc.Namespace).String()]
 
-					if communityLabelExists || communityRoleLabelExists {
+					if communityLabelExists {
 						return false
 					}
 				}

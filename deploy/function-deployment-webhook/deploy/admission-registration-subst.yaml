@@ -1,0 +1,22 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: "kube-system.function-deployment-custom-scheduler.svc"
+webhooks:
+  - name: "kube-system.function-deployment-custom-scheduler.svc"
+    rules:
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments"]
+        scope: "Namespaced"
+    clientConfig:
+      service:
+        namespace: kube-system
+        name: function-deployment-custom-scheduler
+        path: /mutate
+        port: 8443
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJkekNDQVIyZ0F3SUJBZ0lCQURBS0JnZ3Foa2pPUFFRREFqQWpNU0V3SHdZRFZRUUREQmhyTTNNdFkyeHAKWlc1MExXTmhRREUyTXpBMk56VXdPREF3SGhjTk1qRXdPVEF6TVRNeE9EQXdXaGNOTXpFd09UQXhNVE14T0RBdwpXakFqTVNFd0h3WURWUVFEREJock0zTXRZMnhwWlc1MExXTmhRREUyTXpBMk56VXdPREF3V1RBVEJnY3Foa2pPClBRSUJCZ2dxaGtqT1BRTUJCd05DQUFSSkovT1ZVbVlGdTUrbExGcHpJY3kyOGNyRmtTcllFNnNmZHJhSEs3TnEKUkhkS3pqWFh4dDdOWExFQ3UxTk5vaFJDUElwakZDdTBaUENmYU1IWTBLc3VvMEl3UURBT0JnTlZIUThCQWY4RQpCQU1DQXFRd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZEJnTlZIUTRFRmdRVXdsaklkeXJwa1IxdzNvd2gzY2hlCmdlMGFnRTh3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQUxXb3RSNmNNSGEyOGVseUthUzdrSE5GeUVVNXF3NHUKUHZQTTlpYnk0L3IxQWlBUXBIRXJWZDdMZzltKzk4cmFseEJDVjJhKzZrNktzSXBwanZMcXY2SHllQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 5

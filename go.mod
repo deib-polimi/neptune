@@ -7,6 +7,7 @@ require (
 	github.com/asecurityteam/rolling v2.0.4+incompatible
 	github.com/emirpasic/gods v1.12.0
 	github.com/jackc/pgx/v4 v4.13.0
+	github.com/jmcvetta/randutil v0.0.0-20150817122601-2bb1b664bcff
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210723154917-1e5c782a6217
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/onsi/ginkgo v1.16.4

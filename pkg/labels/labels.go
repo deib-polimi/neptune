@@ -10,11 +10,6 @@ type Community string
 type CommunityInstances string
 
 const (
-	Leader CommunityRole = "LEADER"
-	Member CommunityRole = "MEMBER"
-	// CommunityRoleLabel identifies a role of a node inside a community
-	CommunityRoleLabel CommunityRole = "edgeautoscaler.polimi.it/role"
-
 	// CommunityLabel defines the community a node belongs to
 	CommunityLabel Community = "edgeautoscaler.polimi.it/community"
 

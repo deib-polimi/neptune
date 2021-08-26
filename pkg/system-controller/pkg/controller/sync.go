@@ -59,13 +59,10 @@ func (c *SystemController) syncCommunityConfiguration(key string) error {
 		return fmt.Errorf("error while executing SLPA: %s", err)
 	}
 
-	//add the namespace to community labels
+	//add the community label with the corresponding namespace
 	for _, community := range communities {
 		for _, member := range community.Members {
-			member.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityLabel.String()]
-			member.Labels[ealabels.CommunityRoleLabel.WithNamespace(cc.Namespace).String()] = member.Labels[ealabels.CommunityRoleLabel.String()]
-			delete(member.Labels, ealabels.CommunityLabel.String())
-			delete(member.Labels, ealabels.CommunityRoleLabel.String())
+			member.Labels[ealabels.CommunityLabel.WithNamespace(cc.Namespace).String()] = community.Name
 		}
 	}
 
