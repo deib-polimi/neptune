@@ -70,7 +70,6 @@ func (c *Client) SetHost(host string) {
 func (c *Client) Communities(req *RequestSLPA) ([]Community, error) {
 
 	communities, err := c.sendRequest(req, Communities)
-
 	if err != nil {
 		klog.Error(err)
 		return nil, err
@@ -122,8 +121,6 @@ func (c *Client) sendRequest(req *RequestSLPA, p Path) ([]byte, error) {
 		klog.Error(err)
 		return nil, err
 	}
-
-	klog.Info("received response form host: %v", response.Body)
 
 	// Parse the response
 	return ioutil.ReadAll(response.Body)

@@ -3,7 +3,6 @@ package persistor
 import (
 	"context"
 	"fmt"
-
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 )

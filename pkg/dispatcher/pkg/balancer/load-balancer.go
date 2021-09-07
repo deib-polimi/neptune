@@ -164,12 +164,12 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, 
 		},
 	}
 
-	lb.serverPool.SetBackend(b, workload)
+	lb.serverPool.SetBackend(b, int(workload.MilliValue()))
 }
 
 // DeleteServer removes a backend from the pool
 func (lb *LoadBalancer) DeleteServer(serverURL *url.URL) error {
-	b, exists := lb.serverPool.GetBackend(serverURL)
+	b, _, exists := lb.serverPool.GetBackend(serverURL)
 
 	if !exists {
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)
@@ -181,19 +181,19 @@ func (lb *LoadBalancer) DeleteServer(serverURL *url.URL) error {
 
 // ServerExists checks if a backend exists in the pool
 func (lb *LoadBalancer) ServerExists(serverURL *url.URL) (exists bool) {
-	_, exists = lb.serverPool.GetBackend(serverURL)
+	_, _, exists = lb.serverPool.GetBackend(serverURL)
 	return exists
 }
 
 // UpdateWorkload set the new server weight
 func (lb *LoadBalancer) UpdateWorkload(serverURL *url.URL, workload *resource.Quantity) error {
-	b, exists := lb.serverPool.GetBackend(serverURL)
+	b, _, exists := lb.serverPool.GetBackend(serverURL)
 
 	if !exists {
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)
 	}
 
-	lb.serverPool.SetBackend(b, workload)
+	lb.serverPool.SetBackend(b, int(workload.MilliValue()))
 	return nil
 }
 

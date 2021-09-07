@@ -3,10 +3,13 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	rand "math/rand"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
@@ -15,11 +18,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	rand "math/rand"
 )
 
-// TODO: the key is not used
-func (c *CommunityController) runScheduler(key string) error {
+func (c *CommunityController) runScheduler(_ string) error {
 
 	klog.Infof("Rescheduling community %s/%s", c.communityNamespace, c.communityName)
 
@@ -39,22 +40,8 @@ func (c *CommunityController) runScheduler(key string) error {
 		return fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
 
-	delays, err := c.resGetter.GetNodeDelays(c.communityName, c.communityNamespace)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve node delays with error: %s", err)
-	}
+	input, err := NewSchedulingInput(nodes, functions)
 
-	workloads, err := c.resGetter.GetWorkload(c.communityName, c.communityNamespace)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve node workloads with error: %s", err)
-	}
-
-	maxDelays, err := c.resGetter.GetMaxDelays(c.communityNamespace)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve max delays with error: %s", err)
-	}
-
-	input, err := NewSchedulingInput(nodes, functions, delays, workloads, maxDelays)
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
 	}

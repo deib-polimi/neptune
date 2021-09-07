@@ -107,6 +107,11 @@ func NewController(
 		UpdateFunc: controller.handlePodUpdate,
 		DeleteFunc: controller.handlePodDelete,
 	})
+	informers.Node.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleNodeAdd,
+		DeleteFunc: controller.handleNodeDelete,
+		UpdateFunc: controller.handleNodeUpdate,
+	})
 
 	return controller
 }

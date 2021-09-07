@@ -105,7 +105,7 @@ func NewController(
 	// functionChan := make(chan monitoring.FunctionList)
 	// backendChan := make(chan monitoring.BackendList)
 	// monitoringChan := make(chan monitoringmetrics.RawMetricData)
-	metricChan := make(chan metrics.RawResponseTime)
+	metricChan := make(chan metrics.RawResponseTime, 1000)
 
 	// Instantiate the Controller
 	controller := &LoadBalancerController{
@@ -192,6 +192,7 @@ func (c *LoadBalancerController) Run(threadiness int, stopCh <-chan struct{}) er
 	}
 
 	go c.persistor.PollMetrics()
+
 	return nil
 }
 
@@ -216,16 +217,24 @@ func (c *LoadBalancerController) runStandardWorker() {
 }
 
 func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("requests to URL %s received\n", r.URL)
+	klog.Infof("seeking %v\n", NamespaceNameFunction(r.URL))
+	klog.Info("existing balancers\n")
+	for k, _ := range c.balancers {
+		klog.Infof("%v\n", k)
+	}
 	// TODO: a better way would be to check for openfaas-gateway
 	if strings.Contains(r.RequestURI, "/function/") {
 		// TODO: get correct function name from request
 		if balancer, exist := c.balancers[NamespaceNameFunction(r.URL)]; exist {
+			klog.Info("balancing requests")
 			balancer.Balance(w, r)
+		} else {
+			klog.Errorf("requests with URL %s can not be handled by this balancer", r.URL)
 		}
 		klog.Info("processed request, closing chan")
 		return
 	}
-
 	// forward any other request
 	httputil.NewSingleHostReverseProxy(r.URL).ServeHTTP(w, r)
 }
@@ -246,3 +255,5 @@ func NamespaceNameFunction(url *url.URL) string {
 	}
 	return fragments[index+1] + "/" + fragments[index+2]
 }
+
+// TODO: should discard community which are not handled by this controller

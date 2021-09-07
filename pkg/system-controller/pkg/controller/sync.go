@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -178,6 +179,8 @@ func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]int32
 
 func (c *SystemController) syncCommunitySchedules(key string) error {
 
+	klog.Infof("syncing community schedules for configuration %s", key)
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 
@@ -210,7 +213,8 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 
 	cssMap := make(map[string]*eav1alpha1.CommunitySchedule, len(css))
 	for _, cs := range css {
-		cssMap[cs.Name] = cs
+		key := fmt.Sprintf("%s/%s", cs.Namespace, cs.Name)
+		cssMap[key] = cs
 	}
 	for _, community := range cc.Status.Communities {
 		if _, ok := cssMap[community]; !ok {
@@ -220,8 +224,9 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 				klog.Info(err)
 				return err
 			}
+			klog.Infof("new community schedule %s has been created", key)
 		} else {
-			delete(cssMap, community)
+			delete(cssMap, key)
 		}
 	}
 	for _, inconsistentCs := range cssMap {
@@ -230,6 +235,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 			klog.Info(err)
 			return err
 		}
+		klog.Infof("community schedule %s/%s has been deleted", inconsistentCs.Namespace, inconsistentCs.Name)
 	}
 
 	selector := labels.SelectorFromSet(map[string]string{
@@ -247,18 +253,21 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 
 	dpsMap := make(map[string]*appsv1.Deployment, len(dps))
 	for _, dp := range dps {
-		dpsMap[dp.Name] = dp
+		key := fmt.Sprintf("%s/%s", dp.Namespace, dp.Name)
+		dpsMap[key] = dp
 	}
+
 	for _, community := range cc.Status.Communities {
 		if _, ok := dpsMap[community]; !ok {
 			dp := NewCommunityController(namespace, community, cc)
 			_, err = c.kubernetesClientset.AppsV1().Deployments(dp.Namespace).Create(context.TODO(), dp, metav1.CreateOptions{})
 			if err != nil {
-				klog.Info(err)
+				klog.Error(err)
 				return err
 			}
+			klog.Infof("new community controller %s has been created", key)
 		} else {
-			delete(dpsMap, community)
+			delete(dpsMap, key)
 		}
 	}
 	for _, inconsistentDp := range dpsMap {
@@ -267,6 +276,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 			klog.Info(err)
 			return err
 		}
+		klog.Infof("community controller %s/%s has been deleted", inconsistentDp.Namespace, inconsistentDp.Name)
 	}
 
 	return nil

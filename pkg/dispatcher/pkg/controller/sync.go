@@ -16,6 +16,9 @@ import (
 )
 
 func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
+
+	klog.Infof("syncing community schedule %s", key)
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 
@@ -100,9 +103,21 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			}
 
 			actualBackends := []*url.URL{}
+			klog.Infof("backend in routing rules for function: %v in node: %v", functionNamespaceName, source)
+
+			for destination := range destinationRules {
+				klog.Infof("destination: %v", destination)
+			}
 
 			for destination, workload := range destinationRules {
+				//TODO: it happens quite often that this function does not retrieve all the needed pods
 				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination)
+
+				klog.Info("pods of function")
+
+				for _, pod := range pods {
+					klog.Infof("pod: %v in node: %v", pod.Name, pod.Spec.NodeName)
+				}
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
@@ -123,7 +138,6 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 					// sync load balancer backends with the new rules
 					if !lb.ServerExists(destinationURL) {
-						//TODO: remove recovery func
 						// TODO: add mechanism to detect gpu instead of a hardcoded false bool
 						lb.AddServer(destinationURL, destination, false, &workload, func(req *queue.HTTPRequest) {})
 					} else {

@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
-	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"io/ioutil"
+	"net"
+	"net/http"
+	"strconv"
+	"time"
+
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/cache"
-	"net"
-	"net/http"
-	"time"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -20,13 +24,14 @@ const (
 )
 
 type SchedulingInput struct {
-	NodeNames        []string  `json:"node_names"`
-	FunctionNames    []string  `json:"function_names"`
-	NodeMemories     []int64   `json:"node_memories"`
-	FunctionMemories []int64   `json:"function_memories"`
-	Delays           [][]int64 `json:"delay_matrix"`
-	MaxDelays        []int64   `json:"max_delays"`
-	Workloads        [][]int64 `json:"workload_matrix"`
+	NodeNames         []string `json:"node_names"`
+	GpuNodeNames      []string `json:"gpu_node_names"`
+	FunctionNames     []string `json:"function_names"`
+	GpuFunctionNames  []string `json:"gpu_function_names"`
+	NodeMemories      []int64  `json:"node_memories"`
+	GpuNodeMemories   []int64  `json:"gpu_node_memories"`
+	FunctionMemories  []int64  `json:"function_memories"`
+	FunctionMaxDelays []int64  `json:"function_max_delays"`
 }
 
 type SchedulingOutput struct {
@@ -45,9 +50,6 @@ type Scheduler struct {
 func NewSchedulingInput(
 	nodes []*corev1.Node,
 	functions []*openfaasv1.Function,
-	delays [][]int64,
-	workloads [][]int64,
-	maxDelays []int64,
 ) (*SchedulingInput, error) {
 
 	// Check input dimensionality
@@ -62,45 +64,42 @@ func NewSchedulingInput(
 		return nil, fmt.Errorf("number of functions should be greater than 0")
 	}
 
-	if len(delays) != nNodes {
-		return nil, fmt.Errorf("delay matrix must be a square matrix with %vx%v elements", nNodes, nNodes)
-	}
-	for _, a := range delays {
-		if len(a) != nNodes {
-			return nil, fmt.Errorf("delay matrix must be a square matrix with %vx%v elements", nNodes, nNodes)
-		}
-	}
-
-	if len(workloads) != nNodes {
-		return nil, fmt.Errorf("workload matrix must be a square matrix with %vx%v elements", nNodes, nFunctions)
-	}
-	for _, a := range workloads {
-		if len(a) != nFunctions {
-			return nil, fmt.Errorf("workload matrix must be a square matrix with %vx%v elements", nNodes, nFunctions)
-		}
-	}
-
-	if len(maxDelays) != nFunctions {
-		return nil, fmt.Errorf("max delay array must have size %v", nFunctions)
-	}
-
 	nodeNames := make([]string, nNodes)
+	gpuNodeNames := make([]string, 0)
 	for i, node := range nodes {
 		nodeNames[i] = node.Name
+		_, ok := node.Labels[ealabels.GpuLabel]
+		if ok {
+			gpuNodeNames = append(gpuNodeNames, node.Name)
+		}
 	}
 
 	nodeMemories := make([]int64, nNodes)
+	gpuNodeMemories := make([]int64, 0)
 	for i, node := range nodes {
 		nodeMemories[i] = node.Status.Capacity.Memory().MilliValue()
+		value, ok := node.Labels[ealabels.GpuMemoryLabel]
+		if ok {
+			memory, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				klog.Errorf("can not parse value %s as gpu memory (int value) with error %s", value, err)
+			}
+			gpuNodeMemories = append(gpuNodeMemories, memory)
+		}
 	}
 
 	functionNames := make([]string, nFunctions)
+	gpuFunctionNames := make([]string, 0)
 	for i, function := range functions {
 		key, err := cache.MetaNamespaceKeyFunc(function)
 		if err != nil {
 			return nil, err
 		}
 		functionNames[i] = key
+		_, ok := function.Labels[ealabels.GpuFunctionLabel]
+		if ok {
+			gpuFunctionNames = append(gpuFunctionNames, key)
+		}
 	}
 
 	functionMemories := make([]int64, nFunctions)
@@ -113,14 +112,27 @@ func NewSchedulingInput(
 		functionMemories[i] = memory
 	}
 
+	functionMaxDelays := make([]int64, 0)
+	for _, function := range functions {
+		value, ok := (*function.Spec.Labels)[ealabels.FunctionMaxDelayLabel]
+		if ok {
+			maxDelay, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				klog.Fatalf("can not parse value %s as gpu max delay (int value) with error %s", value, err)
+			}
+			functionMaxDelays = append(functionMaxDelays, maxDelay)
+		}
+	}
+
 	return &SchedulingInput{
-		NodeNames:        nodeNames,
-		NodeMemories:     nodeMemories,
-		Delays:           delays,
-		FunctionNames:    functionNames,
-		FunctionMemories: functionMemories,
-		Workloads:        workloads,
-		MaxDelays:        maxDelays,
+		NodeNames:         nodeNames,
+		GpuNodeNames:      gpuNodeNames,
+		NodeMemories:      nodeMemories,
+		GpuNodeMemories:   gpuNodeMemories,
+		FunctionNames:     functionNames,
+		GpuFunctionNames:  gpuFunctionNames,
+		FunctionMemories:  functionMemories,
+		FunctionMaxDelays: functionMaxDelays,
 	}, nil
 }
 

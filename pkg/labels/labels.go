@@ -30,7 +30,11 @@ const (
 	FunctionNameLabel string = "edgeautoscaler.polimi.it/function-name"
 
 	// FunctionKey is the label used to identify the node related to the resource
-	NodeLabel string = "edgeautoscaler.polimi.it/node"
+	NodeLabel             string = "edgeautoscaler.polimi.it/node"
+	GpuLabel              string = "nvidia.com/gpu"
+	GpuMemoryLabel        string = "nvidia.com/gpu-memory"
+	GpuFunctionLabel      string = "nvidia.com/gpu-function"
+	FunctionMaxDelayLabel string = "edgeautoscaler.polimi.it/function-max-delay"
 )
 
 func (c Community) WithNamespace(ns string) Community {

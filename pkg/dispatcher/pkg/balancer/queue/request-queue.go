@@ -13,8 +13,6 @@ type HTTPRequest struct {
 	ResponseChan   chan<- struct{}
 }
 
-//TODO: maybe we should create an interface to change the current queue implementation with workqueue.NamedRateLimitingQueue
-
 // RequestQueue stores the incoming HTTPRequest and makes them available with a FIFO policy
 type RequestQueue struct {
 	queue *list.List

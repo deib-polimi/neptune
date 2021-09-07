@@ -30,6 +30,45 @@ func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}
 	}
 }
 
+// Node handlers
+// Whenever a node leaves or join a community
+func (c *CommunityController) handleNodeAdd(new interface{}) {
+	if node, ok := new.(*corev1.Node); ok {
+		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
+			if nodeCommunity == c.communityName {
+				_ = c.runScheduler("")
+			}
+		}
+	}
+}
+
+func (c *CommunityController) handleNodeDelete(old interface{}) {
+	if node, ok := old.(*corev1.Node); ok {
+		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
+			if nodeCommunity == c.communityName {
+				_ = c.runScheduler("")
+			}
+		}
+	}
+}
+
+func (c *CommunityController) handleNodeUpdate(old, new interface{}) {
+	if node, ok := old.(*corev1.Node); ok {
+		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
+			if nodeCommunity == c.communityName {
+				_ = c.runScheduler("")
+			}
+		}
+	}
+	if node, ok := new.(*corev1.Node); ok {
+		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
+			if nodeCommunity == c.communityName {
+				_ = c.runScheduler("")
+			}
+		}
+	}
+}
+
 // Pod handlers
 // Whenever pods are created or deleted, check if the community schedules allocations are still consistent
 func (c *CommunityController) handlePodAdd(new interface{}) {
@@ -50,7 +89,7 @@ func (c *CommunityController) belongs(pod *corev1.Pod) bool {
 	return ok && community == c.communityName
 }
 
-func (c *CommunityController) handlePod(podObject interface{})  {
+func (c *CommunityController) handlePod(podObject interface{}) {
 	pod, ok := podObject.(*corev1.Pod)
 	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)

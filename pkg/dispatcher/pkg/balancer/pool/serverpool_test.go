@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 var backends = []Backend{
@@ -38,7 +37,7 @@ func TestPool(t *testing.T) {
 
 			verifyFunc: func(t *testing.T, p *ServerPool) {
 				for _, desired := range backends {
-					actual, found := p.GetBackend(desired.URL)
+					actual, _, found := p.GetBackend(desired.URL)
 					require.True(t, found)
 					require.Equal(t, desired, actual)
 				}
@@ -51,10 +50,22 @@ func TestPool(t *testing.T) {
 			verifyFunc: func(t *testing.T, p *ServerPool) {
 				for _, b := range backends {
 					p.RemoveBackend(b)
-					actual, found := p.GetBackend(b.URL)
+					actual, _, found := p.GetBackend(b.URL)
 					require.False(t, found)
 					require.Equal(t, Backend{}, actual)
 				}
+			},
+		},
+		{
+			description: "update backend weight",
+			input:       backends,
+
+			verifyFunc: func(t *testing.T, p *ServerPool) {
+				p.SetBackend(backends[0], 1)
+				b, weight, found := p.GetBackend(backends[0].URL)
+				require.True(t, found)
+				require.Equal(t, backends[0], b)
+				require.Equal(t, 1, weight)
 			},
 		},
 	}
@@ -64,7 +75,7 @@ func TestPool(t *testing.T) {
 			pool := NewServerPool()
 
 			for _, backend := range tt.input {
-				pool.SetBackend(backend, resource.NewMilliQuantity(2, resource.BinarySI))
+				pool.SetBackend(backend, 2)
 			}
 
 			tt.verifyFunc(t, pool)
