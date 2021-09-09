@@ -22,9 +22,8 @@ pkg/*/edge-scheduler
 pkg/*/function-deployment-webhook
 
 .idea/
-pkg/function-deployment-webhook/deploy/server-key.pem
-pkg/function-deployment-webhook/deploy/server-cert.pem
+*.pem
 pkg/dispatcher/dispatcher
 pkg/dispatcher/pkg/controller/loadbalancer-controller.go
-pkg/function-deployment-webhook/deploy/admission-registration-subst.yaml
+*/admission-registration-subst.yaml
 deploy/kosmos.pem
