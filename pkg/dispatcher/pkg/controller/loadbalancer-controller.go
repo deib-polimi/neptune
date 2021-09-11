@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
@@ -47,8 +48,9 @@ type LoadBalancerController struct {
 	kubernetesClientset kubernetes.Interface
 
 	// balancers keeps track of the load balancers associated to a function
-	// function name is the key
-	balancers map[string]*balancer.LoadBalancer
+	//  map[string]*balancer.LoadBalancer
+	// function name is the key.
+	balancers sync.Map
 
 	listers informers.Listers
 
@@ -123,7 +125,7 @@ func NewController(
 		// backendChan:                   backendChan,
 		// functionChan:                  functionChan,
 		metricChan: metricChan,
-		balancers:  make(map[string]*balancer.LoadBalancer),
+		balancers:  sync.Map{},
 		node:       node,
 	}
 
@@ -205,9 +207,7 @@ func (c *LoadBalancerController) listenAndServe(port int) {
 
 	klog.Infof("server listener started at :%d\n", port)
 
-	err := c.serverListener.ListenAndServe()
-
-	utilruntime.HandleError(fmt.Errorf("closing server listener: %s", err))
+	utilruntime.HandleError(fmt.Errorf("closing server: %s", c.serverListener.ListenAndServe()))
 }
 
 // handles standard partitioning (e.g. first partitioning and cache sync)
@@ -217,22 +217,17 @@ func (c *LoadBalancerController) runStandardWorker() {
 }
 
 func (c *LoadBalancerController) enqueueRequest(w http.ResponseWriter, r *http.Request) {
-	klog.Infof("requests to URL %s received\n", r.URL)
-	klog.Infof("seeking %v\n", NamespaceNameFunction(r.URL))
-	klog.Info("existing balancers\n")
-	for k, _ := range c.balancers {
-		klog.Infof("%v\n", k)
-	}
+	klog.Infof("received request: %s\n", r.URL.Path)
+
 	// TODO: a better way would be to check for openfaas-gateway
 	if strings.Contains(r.RequestURI, "/function/") {
 		// TODO: get correct function name from request
-		if balancer, exist := c.balancers[NamespaceNameFunction(r.URL)]; exist {
-			klog.Info("balancing requests")
-			balancer.Balance(w, r)
+		if lb, exist := c.balancers.Load(NamespaceNameFunction(r.URL)); exist {
+			lb.(*balancer.LoadBalancer).Balance(w, r)
 		} else {
-			klog.Errorf("requests with URL %s can not be handled by this balancer", r.URL)
+			klog.Errorf("no balancer found for function %s", NamespaceNameFunction(r.URL))
+			http.Error(w, fmt.Sprintf("no balancer found for function %s", NamespaceNameFunction(r.URL)), http.StatusNotFound)
 		}
-		klog.Info("processed request, closing chan")
 		return
 	}
 	// forward any other request
