@@ -26,24 +26,27 @@ type Backend struct {
 // ServerPool contains a set of backends grouped by the service URL they are serving
 type ServerPool struct {
 	backends []ru.Choice
-	lock     sync.RWMutex
+	lock     *sync.RWMutex
 }
 
 // NewServerPool returns a new ServerPool
 func NewServerPool() *ServerPool {
-	return &ServerPool{}
+	return &ServerPool{
+		backends: []ru.Choice{},
+		lock:     &sync.RWMutex{},
+	}
 }
 
 // SetBackend set a backend  in the map and its workload weight
 func (s *ServerPool) SetBackend(b Backend, weigth int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	klog.Infof("adding backend %v", b)
+	klog.Infof("set backend %v", b)
 
-	for _, backend := range s.backends {
+	for idx, backend := range s.backends {
 		if backend.Item.(Backend).URL.String() == b.URL.String() {
-			s.removeBackend(b)
-			break
+			s.backends[idx] = ru.Choice{Item: b, Weight: weigth}
+			return
 		}
 	}
 	s.backends = append(s.backends, ru.Choice{Weight: weigth, Item: b})
@@ -53,16 +56,16 @@ func (s *ServerPool) SetBackend(b Backend, weigth int) {
 func (s *ServerPool) RemoveBackend(b Backend) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.removeBackend(b)
-}
-
-func (s *ServerPool) removeBackend(b Backend) {
 	for i, choice := range s.backends {
 		if choice.Item == b {
 			s.backends[i] = s.backends[len(s.backends)-1]
 			s.backends = s.backends[:len(s.backends)-1]
 			break
 		}
+	}
+
+	if len(s.backends) == 0 {
+		klog.Errorf("Empty backends. Last backend removed is: %v", b)
 	}
 }
 
@@ -91,6 +94,7 @@ func (s *ServerPool) NextBackend() (Backend, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	choice, err := ru.WeightedChoice(s.backends)
+
 	if err != nil {
 		return Backend{}, fmt.Errorf("failed to get a random backend, error: %s", err)
 	}
@@ -101,19 +105,21 @@ func (s *ServerPool) NextBackend() (Backend, error) {
 func (s *ServerPool) BackendDiff(backends []*url.URL) (diff []*url.URL) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	blueprint := make(map[*url.URL]bool)
+	diff = []*url.URL{}
+	blueprint := make(map[string]*url.URL, len(s.backends))
 
 	for _, choice := range s.backends {
-		blueprint[choice.Item.(Backend).URL] = true
+		klog.Infof("%v", choice.Item.(Backend).URL.Host)
+		blueprint[choice.Item.(Backend).URL.String()] = choice.Item.(Backend).URL
 	}
 
 	for _, desired := range backends {
-		if _, exists := blueprint[desired]; exists {
-			delete(blueprint, desired)
+		if _, exists := blueprint[desired.String()]; exists {
+			delete(blueprint, desired.String())
 		}
 	}
 
-	for oldBackend := range blueprint {
+	for _, oldBackend := range blueprint {
 		diff = append(diff, oldBackend)
 	}
 	return

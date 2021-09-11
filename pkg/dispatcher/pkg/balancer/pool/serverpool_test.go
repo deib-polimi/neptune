@@ -48,11 +48,15 @@ func TestPool(t *testing.T) {
 			input:       backends,
 
 			verifyFunc: func(t *testing.T, p *ServerPool) {
+				expectedLength := len(backends)
 				for _, b := range backends {
 					p.RemoveBackend(b)
 					actual, _, found := p.GetBackend(b.URL)
 					require.False(t, found)
 					require.Equal(t, Backend{}, actual)
+
+					require.Equal(t, expectedLength-1, len(p.backends))
+					expectedLength--
 				}
 			},
 		},
@@ -66,6 +70,24 @@ func TestPool(t *testing.T) {
 				require.True(t, found)
 				require.Equal(t, backends[0], b)
 				require.Equal(t, 1, weight)
+			},
+		},
+		{
+			description: "test diff",
+			input:       backends,
+
+			verifyFunc: func(t *testing.T, p *ServerPool) {
+				diff := p.BackendDiff([]*url.URL{backends[0].URL, backends[1].URL})
+				require.Equal(t, []*url.URL{backends[2].URL}, diff)
+			},
+		},
+		{
+			description: "test diff",
+			input:       []Backend{backends[0]},
+
+			verifyFunc: func(t *testing.T, p *ServerPool) {
+				diff := p.BackendDiff([]*url.URL{backends[0].URL, backends[1].URL})
+				require.Equal(t, []*url.URL{}, diff)
 			},
 		},
 	}
