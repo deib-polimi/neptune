@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -101,6 +102,20 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		Community:   lb.Community,
 		Gpu:         peer.HasGpu,
 		Latency:     int(delta.Milliseconds()),
+	}
+
+	if resErr != nil {
+		requestData.StatusCode = http.StatusBadGateway
+		requestData.Description = resErr.Error()
+	} else {
+		requestData.StatusCode = res.StatusCode
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+
+		if err != nil {
+			requestData.Description = err.Error()
+		} else {
+			requestData.Description = string(bodyBytes)
+		}
 	}
 
 	lb.metricChan <- requestData

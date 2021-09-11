@@ -19,6 +19,8 @@ type RawResponseTime struct {
 	Community   string
 	Gpu         bool
 	Latency     int
+	StatusCode  int
+	Description string
 }
 
 // ExposedMetrics is a struct that wraps the exposed metrics
