@@ -3,6 +3,7 @@ package persistor
 import (
 	"context"
 	"fmt"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 )
@@ -70,10 +71,12 @@ func (p *MetricsPersistor) PollMetrics() {
 			p.Stop()
 			return
 		}
-		err := p.save(m)
-		if err != nil {
-			fmt.Print(fmt.Errorf("failed to save metric %v, error: %s", m, err))
-			return
-		}
+
+		go func() {
+			err := p.save(m)
+			if err != nil {
+				fmt.Print(fmt.Errorf("failed to save metric %v, error: %s", m, err))
+			}
+		}()
 	}
 }
