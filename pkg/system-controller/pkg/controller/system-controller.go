@@ -93,7 +93,6 @@ func NewController(
 		communityConfigurationsSynced:   informers.CommunityConfiguration.Informer().HasSynced,
 		syncConfigurationsWorkqueue:     queue.NewQueue("CommunityConfigurationsQueue"),
 		syncSchedulesWorkqueue:          queue.NewQueue("CommunityScheduleQueue"),
-		syncDeploymentReplicasWorkqueue: queue.NewQueue("DeploymentReplicasQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
@@ -102,11 +101,6 @@ func NewController(
 		AddFunc:    controller.handleCommunityConfigurationsAdd,
 		UpdateFunc: controller.handleCommunityConfigurationsUpdate,
 		DeleteFunc: controller.handleCommunityConfigurationsDeletion,
-	})
-	informers.Deployment.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleDeploymentAdd,
-		UpdateFunc: controller.handleDeploymentUpdate,
-		DeleteFunc: controller.handleDeploymentDelete,
 	})
 
 	return controller
@@ -136,7 +130,6 @@ func (c *SystemController) Run(threadiness int, stopCh <-chan struct{}) error {
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runStandardWorker, time.Second, stopCh)
 		go wait.Until(c.runSyncSchedulesWorker, time.Second, stopCh)
-		go wait.Until(c.runSyncDeploymentReplicasWorker, time.Second, stopCh)
 	}
 
 	// TODO: implement
@@ -158,11 +151,6 @@ func (c *SystemController) runSyncSchedulesWorker() {
 	}
 }
 
-// handles standard partitioning (e.g. first partioning and cache sync)
-func (c *SystemController) runSyncDeploymentReplicasWorker() {
-	for c.syncDeploymentReplicasWorkqueue.ProcessNextItem(c.syncDeploymentReplicas) {
-	}
-}
 
 // control loop to handle performance degradation inside communities
 func (c *SystemController) runPerformanceDegradationObserver() {

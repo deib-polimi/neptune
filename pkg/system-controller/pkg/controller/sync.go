@@ -3,8 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strconv"
-
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -272,80 +270,6 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 
 	return nil
 
-}
-
-// ComputeDeploymentReplicas computes the new amount of replicas by taking in consideration all the amounts requested
-// by the communities
-func ComputeDeploymentReplicas(deployment *appsv1.Deployment, communityNamespace string, communities []string) (*int32, error) {
-	instances := int32(0)
-	for _, community := range communities {
-		communityInstancesLabel := ealabels.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(community).String()
-		if val, ok := deployment.Labels[communityInstancesLabel]; ok {
-			intVal, err := strconv.ParseInt(val, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse community label %s for deployment %s/%s with error: %s", communityInstancesLabel, deployment.Namespace, deployment.Name, err)
-			} else {
-				instances += int32(intVal)
-			}
-		}
-	}
-	//klog.Info("New replicas for deployment %s/%s")
-	return &instances, nil
-}
-
-// syncDeploymentReplicas ensures that the amount of replicas assigned to a deployment
-// the sum of the replicas assigned to all communities
-func (c *SystemController) syncDeploymentReplicas(key string) error {
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-
-	if err != nil {
-		return fmt.Errorf("invalid resource key: %s", key)
-	}
-
-	deployment, err := c.kubernetesClientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		} else {
-			klog.Errorf("failed to retrieve deployment %s/%s with error: %s", namespace, name, err)
-			return err
-		}
-	}
-
-	ccList, err := c.listers.CommunityConfigurations(namespace).List(labels.Everything())
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		} else {
-			klog.Errorf("failed to retrieve community configuration %s, with error: %s", namespace, err)
-			return err
-		}
-	}
-
-	if len(ccList) != 1 {
-		return fmt.Errorf("community configuration size for namespace %s should be 1 instead of %v", namespace, len(ccList))
-	}
-	cc := ccList[0]
-
-	replicas, err := ComputeDeploymentReplicas(deployment, cc.Namespace, cc.Status.Communities)
-	if err != nil {
-		klog.Info("failed to compute replicas for deployment %s/%s with error: %s", namespace, name, err)
-		return err
-	}
-
-	klog.Infof("syncing replicas for deployment %s/%s -> from %v to %v replicas", namespace, name, *deployment.Spec.Replicas, *replicas)
-
-	deployment.Spec.Replicas = replicas
-
-	_, err = c.kubernetesClientset.AppsV1().Deployments(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update deployment %s/%s with error: %s", namespace, name, err)
-	}
-
-	klog.Infof("deployment %s/%s synced successfully", namespace, name)
-
-	return nil
 }
 
 // NewCommunitySchedule returns a new empty community schedule with a given namespace and name

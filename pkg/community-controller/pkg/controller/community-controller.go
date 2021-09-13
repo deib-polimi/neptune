@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
@@ -46,6 +48,7 @@ type CommunityController struct {
 	communitySchedulesSynced      cache.InformerSynced
 	functionSynced                cache.InformerSynced
 	deploymentsSynced             cache.InformerSynced
+	podsSynced             cache.InformerSynced
 
 	communityName      string
 	communityNamespace string
@@ -58,8 +61,6 @@ type CommunityController struct {
 
 	// syncCommunityScheduleWorkqueue contains the community schedules which have to be synced
 	syncCommunityScheduleWorkqueue queue.Queue
-	// unscheduledPodWorkqueue contains the pods which have to be scheduled
-	unscheduledPodWorkqueue queue.Queue
 }
 
 // NewController returns a new CommunityController
@@ -91,8 +92,8 @@ func NewController(
 		communitySchedulesSynced:       informers.CommunitySchedule.Informer().HasSynced,
 		deploymentsSynced:              informers.Deployment.Informer().HasSynced,
 		functionSynced:                 informers.Function.Informer().HasSynced,
+		podsSynced:                 		informers.Pod.Informer().HasSynced,
 		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue"),
-		unscheduledPodWorkqueue:        queue.NewQueue("UnscheduledPodWorkqueue"),
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
 	}
@@ -108,6 +109,7 @@ func NewController(
 	informers.Pod.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.handlePodAdd,
 		UpdateFunc: controller.handlePodUpdate,
+		DeleteFunc: controller.handlePodDelete,
 	})
 
 	return controller
@@ -131,7 +133,8 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 		c.communitySchedulesSynced,
 		c.deploymentsSynced,
 		c.nodeSynced,
-		c.functionSynced); !ok {
+		c.functionSynced,
+		c.podsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -141,7 +144,7 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 	for i := 0; i < threadiness; i++ {
 		// TODO: Currently the scheduler reschedules pods every 30 seconds. It should be change to be triggered by event or as cron jobs
 		go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
-		go wait.Until(c.scheduleUnscheduledPod, time.Second, stopCh)
+		//go wait.Until(c.scheduleUnscheduledPod, time.Second, stopCh)
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
 
@@ -153,18 +156,27 @@ func (c *CommunityController) runPeriodicScheduleWorker() {
 	_ = c.runScheduler("")
 }
 
+//// runSyncCommunitySchedule is a worker which looks for inconsistencies between
+//// the community schedule and current allocation of pods
+//// if any is found, those functions are deleted
+//func (c *CommunityController) runSyncCommunitySchedule() {
+//	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunitySchedule) {
+//	}
+//}
+//
+//// scheduleUnscheduledPod whenever a pod results to be unscheduled
+//// this worker finds a new node for that pod
+//func (c *CommunityController) scheduleUnscheduledPod() {
+//	for c.unscheduledPodWorkqueue.ProcessNextItem(c.schedulePod) {
+//	}
+//}
+
+// TODO: comment
 // runSyncCommunitySchedule is a worker which looks for inconsistencies between
 // the community schedule and current allocation of pods
 // if any is found, those functions are deleted
 func (c *CommunityController) runSyncCommunitySchedule() {
-	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunitySchedule) {
-	}
-}
-
-// scheduleUnscheduledPod whenever a pod results to be unscheduled
-// this worker finds a new node for that pod
-func (c *CommunityController) scheduleUnscheduledPod() {
-	for c.unscheduledPodWorkqueue.ProcessNextItem(c.schedulePod) {
+	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunityScheduleAllocation) {
 	}
 }
 
@@ -172,3 +184,37 @@ func (c *CommunityController) scheduleUnscheduledPod() {
 func (c *CommunityController) Shutdown() {
 	utilruntime.HandleCrash()
 }
+
+func (c * CommunityController) logEvent(message string, reason string) {
+	cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+	if err != nil {
+		klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+		return
+	}
+	event := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        fmt.Sprintf("community-controller::%s", c.communityName),
+			Namespace:   c.communityNamespace,
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Kind:            cs.Kind,
+			Namespace:       cs.Namespace,
+			Name:            cs.Name,
+			UID:             cs.UID,
+			APIVersion:      cs.APIVersion,
+			ResourceVersion: cs.ResourceVersion,
+			//FieldPath:       cs.Fie,
+		},
+		Reason:         reason,
+		Message:        message,
+		FirstTimestamp: metav1.Now(),
+		LastTimestamp:  metav1.Now(),
+		Count:          1,
+	}
+	_, err = c.kubernetesClientset.CoreV1().Events(event.Namespace).Create(context.TODO(), event, metav1.CreateOptions{})
+	if err != nil {
+		klog.Errorf("Can not create event for community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+		return
+	}
+}
+

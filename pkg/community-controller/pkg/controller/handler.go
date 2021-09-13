@@ -2,7 +2,9 @@ package controller
 
 import (
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 )
 
 // Community Schedule handlers
@@ -32,29 +34,50 @@ func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}
 // Whenever a pod is unscheduled, schedule it
 func (c *CommunityController) handlePodAdd(new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && isFunctionPod(pod) && isUnscheduled(pod) {
-		c.unscheduledPodWorkqueue.Enqueue(new)
+	if ok && c.checkPod(pod) {
+		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+		if err != nil {
+			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+			return
+		}
+		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
+	}
+}
+
+func (c *CommunityController) handlePodDelete(old interface{}) {
+	pod, ok := old.(*corev1.Pod)
+	if ok && c.checkPod(pod) {
+		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+		if err != nil {
+			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+			return
+		}
+		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
 	}
 }
 
 func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && isFunctionPod(pod) && isUnscheduled(pod) {
-		c.unscheduledPodWorkqueue.Enqueue(new)
+	if ok && c.checkPod(pod) {
+		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+		if err != nil {
+			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+			return
+		}
+		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
+	}
+	pod, ok = old.(*corev1.Pod)
+	if ok && c.checkPod(pod) {
+		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+		if err != nil {
+			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+			return
+		}
+		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
 	}
 }
 
-func isFunctionPod(pod *corev1.Pod) bool {
-	if pod.ObjectMeta.Annotations == nil {
-		return false
-	}
-	_, ok := pod.ObjectMeta.Annotations["com.openfaas.function.spec"]
-	if !ok {
-		return false
-	}
-	return true
-}
-
-func isUnscheduled(pod *corev1.Pod) bool {
-	return len(pod.Spec.NodeName) == 0
+func (c *CommunityController) checkPod(pod *corev1.Pod) bool {
+	community, ok := pod.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]
+	return ok && community == c.communityName
 }

@@ -5,16 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
-	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"io/ioutil"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/cache"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -184,26 +181,6 @@ func (s *Scheduler) Schedule(input *SchedulingInput) (*SchedulingOutput, error) 
 	}
 
 	return &output, nil
-
-}
-
-// Apply applies a scheduling output
-func (s *Scheduler) Apply(communityNamespace, communityName string, output *SchedulingOutput, function *openfaasv1.Function, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
-
-	key, err := cache.MetaNamespaceKeyFunc(function)
-	if err != nil {
-		return nil, err
-	}
-
-	instances := len(output.Allocations[key])
-
-	if deployment.Labels == nil {
-		deployment.Labels = make(map[string]string)
-	}
-
-	deployment.Labels[ealabels.CommunityInstancesLabel.WithNamespace(communityNamespace).WithName(communityName).String()] = strconv.Itoa(instances)
-
-	return deployment, nil
 
 }
 

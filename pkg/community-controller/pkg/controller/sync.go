@@ -3,6 +3,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
@@ -11,6 +15,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	rand "math/rand"
 )
 
 // TODO: the key is not used
@@ -66,21 +71,6 @@ func (c *CommunityController) runScheduler(key string) error {
 		return fmt.Errorf("failed to compute scheduling output with error: %s", err)
 	}
 
-	for _, function := range functions {
-		deployment, err := c.kubernetesClientset.AppsV1().Deployments(function.Namespace).Get(context.TODO(), function.Spec.Name, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to retrieve deployment %s/%s with error: %s", function.Namespace, function.Spec.Name, err)
-		}
-		deployment, err = scheduler.Apply(c.communityNamespace, c.communityName, output, function, deployment)
-		if err != nil {
-			return fmt.Errorf("failed to apply schedule for deployment %s/%s with error: %s", function.Namespace, function.Name, err)
-		}
-		_, err = c.kubernetesClientset.AppsV1().Deployments(deployment.Namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to update deployment %s/%s with error: %s", deployment.Namespace, deployment.Name, err)
-		}
-	}
-
 	cs = output.ToCommunitySchedule(cs)
 	_, err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(c.communityNamespace).Update(context.TODO(), cs, metav1.UpdateOptions{})
 	if err != nil {
@@ -101,11 +91,11 @@ func (c *CommunityController) bind(pod *corev1.Pod, nodeName string) error {
 	return err
 }
 
-// syncCommunitySchedule ensures that the community schedule allocation is consistent
-// by deleting the pods which are not necessary anymore
-func (c *CommunityController) syncCommunitySchedule(key string) error {
+// syncCommunityScheduleAllocation ensures that pods serving a certain function are created
+// or deleted according to the community schedule allocation
+func (c *CommunityController) syncCommunityScheduleAllocation(key string) error {
 
-	klog.Infof("Syncing community schedule %s", key)
+	klog.Infof("Syncing community schedule allocations %s", key)
 
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -120,117 +110,216 @@ func (c *CommunityController) syncCommunitySchedule(key string) error {
 		return err
 	}
 
-	functions, err := c.listers.Functions(namespace).List(labels.Everything())
+	functionKeys := cs.Spec.Allocations
+
+	// Retrieve the pods managed by a certain community
+	podSelector := labels.SelectorFromSet(
+		map[string]string{
+			ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String(): c.communityName,
+		})
+	pods, err := c.listers.PodLister.List(podSelector)
 	if err != nil {
-		klog.Errorf("failed to list functions in namespace %s, with error %s", namespace, err)
+		klog.Errorf("can not list pod using selector %v, with error %v", podSelector, err)
 		return err
 	}
-
-	for _, function := range functions {
-
-		fkey := function.Namespace + "/" + function.Name
-		if _, ok := cs.Spec.Allocations[fkey]; !ok {
-			klog.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
-			return fmt.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
-		}
-
-		pods, err := c.resGetter.GetPodsOfFunction(function)
-		if err != nil {
-			klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
-			return fmt.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
-		}
-
-		for _, pod := range pods {
-			// If the pod has been scheduled but on a node which is not present in the community schedule allocation
-			if len(pod.Spec.NodeName) != 0 {
-				if community, ok := pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok && community == c.communityName {
-					if _, ok := cs.Spec.Allocations[fkey][pod.Spec.NodeName]; !ok {
-						klog.Info(cs.Spec.Allocations)
-						klog.Info(pod.Spec.NodeName)
-						err := c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-						if err != nil {
-							klog.Errorf("failed to delete pod %s/%s, with error %s", pod.Namespace, pod.Name, err)
-							return err
-						}
+	podsMap := make(map[string]map[string]*corev1.Pod)
+	for _, pod := range pods {
+		// TODO: should try to hand with && in order to make it more responsive, but it will create many pod at time
+		if pod.Status.Phase == corev1.PodRunning || pod.DeletionTimestamp == nil {
+			if fNamespace, ok := pod.Labels[ealabels.FunctionNamespaceLabel]; ok {
+				if fName, ok := pod.Labels[ealabels.FunctionNameLabel]; ok {
+					fKey := fmt.Sprintf("%s/%s", fNamespace, fName)
+					if _, ok := podsMap[fKey]; !ok {
+						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
+					podsMap[fKey][pod.Spec.NodeName] = pod
 				}
 			}
+		}
+	}
+	deleteSet := make([]*corev1.Pod, 0)
+	createSet := make([]*corev1.Pod, 0)
+
+	// Compute the pod creation set
+	for functionKey, nodes := range functionKeys {
+		fNamespace, fName, err := cache.SplitMetaNamespaceKey(functionKey)
+		if err != nil {
+			klog.Errorf("invalid resource key: %s", functionKey)
+			return err
+		}
+		function, err := c.listers.Functions(fNamespace).Get(fName)
+		if err != nil {
+			klog.Errorf("can not retrieve function %s/%s, with error %v", fNamespace, fName, err)
+			return err
+		}
+		for node, ok := range nodes {
+			if ok {
+				if _, ok := podsMap[functionKey][node]; ok {
+					delete(podsMap[functionKey], node)
+				} else {
+					pod := newPod(function, cs, node)
+					createSet = append(createSet, pod)
+				}
+			}
+		}
+	}
+
+	for _, nodes := range podsMap {
+		for _, pod := range nodes {
+			deleteSet = append(deleteSet, pod)
+		}
+	}
+
+	for _, pod := range createSet {
+		node := pod.Labels[ealabels.NodeLabel]
+		pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		if err != nil {
+			klog.Errorf("failed to create pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+			return err
+		}
+		err = c.bind(pod, node)
+		if err != nil {
+			klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
+			return err
+		}
+	}
+
+	for _, pod := range deleteSet {
+		err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+			return err
 		}
 	}
 
 	return nil
 }
 
-// schedulePod finds a node for an unscheduled pod
-// the node of the pod is given by the community schedule allocation
-func (c *CommunityController) schedulePod(key string) error {
+// newPod creates a new Pod for a Function resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the Function resource that 'owns' it.
+func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
 
-	klog.Infof("Scheduling pod %s", key)
+	envVars := makeEnvVars(function)
 
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	resources, err := makeResources(function)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
-		return nil
+		klog.Warningf("Function %s resources parsing failed: %v",
+			function.Spec.Name, err)
 	}
 
-	pod, err := c.listers.Pods(namespace).Get(name)
-	if err != nil {
-		klog.Errorf("failed to retrieve pod %s/%s, with error %s", namespace, name, err)
-		return err
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        fmt.Sprintf("%s-%s", function.Spec.Name, hash(8)),
+			Annotations: function.Annotations,
+			Namespace:   function.Namespace,
+			Labels: map[string]string{
+				ealabels.FunctionNamespaceLabel:                              function.Namespace,
+				ealabels.FunctionNameLabel:                                   function.Name,
+				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
+				ealabels.NodeLabel:                                           node,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(function, schema.GroupVersionKind{
+					Group:   openfaasv1.SchemeGroupVersion.Group,
+					Version: openfaasv1.SchemeGroupVersion.Version,
+					Kind:    "Function",
+				}),
+			},
+		},
+		Spec: corev1.PodSpec{
+			SchedulerName: "edge-autoscaler",
+			Containers: []corev1.Container{
+				{
+					Name:  function.Spec.Name,
+					Image: function.Spec.Image,
+					Ports: []corev1.ContainerPort{
+						{ContainerPort: int32(8080), Protocol: corev1.ProtocolTCP},
+					},
+					//ImagePullPolicy: corev1.PullPolicy(factory.Factory.Config.ImagePullPolicy),
+					Env:       envVars,
+					Resources: *resources,
+					// TODO: add probe with Function Factory
+					//LivenessProbe:   probes.Liveness,
+					//ReadinessProbe:  probes.Readiness,
+				},
+			},
+		},
 	}
 
-	// Check if pod has been already scheduled
-	if len(pod.Spec.NodeName) != 0 {
-		klog.Errorf("pod %s/%s has already been scheduled", namespace, name)
-		return nil
+	return pod
+
+}
+
+func makeEnvVars(function *openfaasv1.Function) []corev1.EnvVar {
+	envVars := []corev1.EnvVar{}
+
+	if len(function.Spec.Handler) > 0 {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "fprocess",
+			Value: function.Spec.Handler,
+		})
 	}
 
-	function, err := c.resGetter.GetFunctionOfPod(pod)
-	if err != nil {
-		klog.Errorf("failed to retrieve function of pod %s/%s, with error %s", namespace, name, err)
-		return err
-	}
-
-	cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
-	if err != nil {
-		klog.Errorf("failed to retrieve community schedule %s/%s, with error %s", c.communityNamespace, c.communityName, err)
-		return err
-	}
-
-	otherPods, err := c.resGetter.GetPodsOfFunction(function)
-	if err != nil {
-		klog.Errorf("failed to retrieve pods of function %s/%s, with error %s", function.Namespace, function.Name, err)
-		return err
-	}
-
-	busyNodes := make(map[string]bool)
-	for _, otherPod := range otherPods {
-		busyNodes[otherPod.Spec.NodeName] = true
-	}
-
-	if _, ok := cs.Spec.Allocations[function.Namespace+"/"+function.Name]; ok {
-		for nodeName, v := range cs.Spec.Allocations[function.Namespace+"/"+function.Name] {
-			if v {
-				if _, ok = busyNodes[nodeName]; !ok {
-					err = c.bind(pod, nodeName)
-					if err != nil {
-						klog.Errorf("failed to bind pod %s/%s to node %s, with error %s", namespace, name, nodeName, err)
-					}
-					pod.ObjectMeta.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()] = c.communityName
-					_, err := c.kubernetesClientset.CoreV1().Pods(namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
-					if err != nil {
-						klog.Errorf("failed to update pod %s/%s to node %s, with error %s", namespace, name, nodeName, err)
-					}
-					break
-				}
-			}
+	if function.Spec.Environment != nil {
+		for k, v := range *function.Spec.Environment {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  k,
+				Value: v,
+			})
 		}
-	} else {
-		klog.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
-		return fmt.Errorf("failed to find function %s/%s in community schedule allocations", function.Namespace, function.Name)
 	}
 
-	klog.Errorf("failed to find a node for pod %s/%s", function.Namespace, function.Name)
-	return fmt.Errorf("failed to find a node for pod %s/%s", function.Namespace, function.Name)
+	return envVars
+}
+
+func makeResources(function *openfaasv1.Function) (*corev1.ResourceRequirements, error) {
+	resources := &corev1.ResourceRequirements{
+		Limits:   corev1.ResourceList{},
+		Requests: corev1.ResourceList{},
+	}
+
+	// Set Memory limits
+	if function.Spec.Limits != nil && len(function.Spec.Limits.Memory) > 0 {
+		qty, err := resource.ParseQuantity(function.Spec.Limits.Memory)
+		if err != nil {
+			return resources, err
+		}
+		resources.Limits[corev1.ResourceMemory] = qty
+	}
+	if function.Spec.Requests != nil && len(function.Spec.Requests.Memory) > 0 {
+		qty, err := resource.ParseQuantity(function.Spec.Requests.Memory)
+		if err != nil {
+			return resources, err
+		}
+		resources.Requests[corev1.ResourceMemory] = qty
+	}
+
+	// Set CPU limits
+	if function.Spec.Limits != nil && len(function.Spec.Limits.CPU) > 0 {
+		qty, err := resource.ParseQuantity(function.Spec.Limits.CPU)
+		if err != nil {
+			return resources, err
+		}
+		resources.Limits[corev1.ResourceCPU] = qty
+	}
+	if function.Spec.Requests != nil && len(function.Spec.Requests.CPU) > 0 {
+		qty, err := resource.ParseQuantity(function.Spec.Requests.CPU)
+		if err != nil {
+			return resources, err
+		}
+		resources.Requests[corev1.ResourceCPU] = qty
+	}
+
+	return resources, nil
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+
+func hash(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
