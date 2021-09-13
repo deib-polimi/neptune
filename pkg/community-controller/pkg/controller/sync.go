@@ -112,6 +112,9 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 
 	functionKeys := cs.Spec.Allocations
 
+	deleteSet := make([]*corev1.Pod, 0)
+	createSet := make([]*corev1.Pod, 0)
+
 	// Retrieve the pods managed by a certain community
 	podSelector := labels.SelectorFromSet(
 		map[string]string{
@@ -132,13 +135,15 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 					if _, ok := podsMap[fKey]; !ok {
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
-					podsMap[fKey][pod.Spec.NodeName] = pod
+					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
+						deleteSet = append(deleteSet, pod)
+					} else {
+						podsMap[fKey][pod.Spec.NodeName] = pod
+					}
 				}
 			}
 		}
 	}
-	deleteSet := make([]*corev1.Pod, 0)
-	createSet := make([]*corev1.Pod, 0)
 
 	// Compute the pod creation set
 	for functionKey, nodes := range functionKeys {
