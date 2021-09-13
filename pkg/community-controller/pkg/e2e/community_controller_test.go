@@ -7,26 +7,21 @@ import (
 	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
-	labels2 "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
 	"net/http"
 	"time"
 
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const namespace = "e2e"
-const slpaNamespace = "kube-system"
 const timeout = 1 * time.Minute
 const interval = 2 * time.Second
 
-const slpaName = "slpa-algorithm"
 const ccName = "example-slpa"
 const functionName = "function"
 
@@ -99,47 +94,38 @@ var _ = Describe("Community Controller", func() {
 			}, 2*timeout, interval).Should(BeTrue())
 		})
 
-		It("Schedules unscheduled pods", func() {
-
-			communityReplicas := 0
-			for _, node := range workerNodes {
-				community, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]
-				if ok {
-					if community == communityName {
-						pod := functionPod.DeepCopy()
-						pod.Name = node.Name
-						_, err := kubeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
-						Expect(err).ShouldNot(HaveOccurred())
-						communityReplicas++
-					}
-				}
-			}
-
-			dp := functionDeployment.DeepCopy()
-			dp.Spec.Replicas = pointer.Int32Ptr(int32(len(workerNodes)))
-
-			_, err := kubeClient.AppsV1().Deployments(functionDeployment.Namespace).Create(ctx, functionDeployment, metav1.CreateOptions{})
-			Expect(err).ShouldNot(HaveOccurred())
-
+		It("Pods are created and scheduled", func() {
 			Eventually(func() bool {
-				options := metav1.ListOptions{LabelSelector: labels2.SelectorFromSet(map[string]string{
-					"faas_function": function.Spec.Name,
-					"controller":    function.Name,
-				}).String()}
-				pods, err := kubeClient.CoreV1().Pods(functionDeployment.Namespace).List(ctx, options)
-				if err != nil {
-					klog.Info(err)
-					return false
-				}
-				if len(pods.Items) != communityReplicas {
-					return false
-				}
-				for _, pod := range pods.Items {
-					if len(pod.Spec.NodeName) == 0 {
-						return false
+				allFound := true
+
+				pods, err := kubeClient.CoreV1().Pods(communityNamespace).List(context.TODO(), metav1.ListOptions{})
+				Expect(err).ToNot(HaveOccurred())
+
+				updatedCS, err := eaClient.EdgeautoscalerV1alpha1().CommunitySchedules(communityNamespace).Get(ctx, communityName, metav1.GetOptions{})
+				Expect(err).ToNot(HaveOccurred())
+
+				for functionKey, nodes := range updatedCS.Spec.Allocations {
+					functionNamespace, functionName, err := cache.SplitMetaNamespaceKey(functionKey)
+					Expect(err).ToNot(HaveOccurred())
+					for node, ok := range nodes {
+						found := false
+						if ok {
+							for _, pod := range pods.Items {
+								podFunctionNamespace, okFunctionNamespace := pod.Labels[ealabels.FunctionNamespaceLabel]
+								podFunctionName, okFunctionName := pod.Labels[ealabels.FunctionNameLabel]
+								podFunctionNode, okFunctionNode := pod.Labels[ealabels.NodeLabel]
+								podFunctionCommunity, okFunctionCommunity := pod.Labels[ealabels.CommunityLabel.WithNamespace(communityNamespace).String()]
+								found = okFunctionNamespace && okFunctionName && okFunctionNode && okFunctionCommunity &&
+									podFunctionNamespace == functionNamespace && podFunctionName == functionName && podFunctionNode == node && podFunctionCommunity == communityName
+								if found {
+									break
+								}
+							}
+						}
+						allFound = allFound && found
 					}
 				}
-				return true
+				return allFound
 			}, 5*timeout, interval).Should(BeTrue())
 		})
 
@@ -209,73 +195,6 @@ func newFakeSchedulerServer() {
 	}()
 }
 
-var slpaDeployment = &appsv1.Deployment{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      slpaName,
-		Namespace: slpaNamespace,
-	},
-	TypeMeta: metav1.TypeMeta{
-		Kind:       "Deployment",
-		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
-	},
-	Spec: appsv1.DeploymentSpec{
-		Replicas: pointer.Int32Ptr(1),
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app": slpaName,
-			},
-		},
-		Strategy: appsv1.DeploymentStrategy{
-			Type: appsv1.RecreateDeploymentStrategyType,
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"app": slpaName,
-				},
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:            slpaName,
-						Image:           "systemautoscaler/slpa-rest:0.0.1",
-						ImagePullPolicy: corev1.PullAlways,
-						Ports: []corev1.ContainerPort{
-							{
-								ContainerPort: 4567,
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-}
-
-var slpaService = &corev1.Service{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "slpa",
-		Namespace: slpaNamespace,
-		Labels: map[string]string{
-			"app": slpaName,
-		},
-	},
-	TypeMeta: metav1.TypeMeta{
-		Kind:       "Service",
-		APIVersion: corev1.SchemeGroupVersion.Identifier(),
-	},
-	Spec: corev1.ServiceSpec{
-		Ports: []corev1.ServicePort{
-			{
-				Port: 4567,
-			},
-		},
-		Selector: map[string]string{
-			"app": slpaName,
-		},
-	},
-}
-
 var function = &openfaasv1.Function{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      functionName,
@@ -294,80 +213,5 @@ var function = &openfaasv1.Function{
 		Requests: &openfaasv1.FunctionResources{
 			Memory: "1Mi",
 		},
-	},
-}
-
-var functionDeployment = &appsv1.Deployment{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      functionName,
-		Namespace: namespace,
-		Labels:    make(map[string]string),
-		Annotations: map[string]string{
-			"com.openfaas.function.spec": "something about openfaas",
-		},
-	},
-	TypeMeta: metav1.TypeMeta{
-		Kind:       "Deployment",
-		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
-	},
-	Spec: appsv1.DeploymentSpec{
-		Replicas: pointer.Int32Ptr(0),
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app":        functionName,
-				"controller": functionName,
-			},
-		},
-		Strategy: appsv1.DeploymentStrategy{
-			Type: appsv1.RecreateDeploymentStrategyType,
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"app":           functionName,
-					"controller":    functionName,
-					"faas_function": functionName,
-				},
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:            functionName,
-						Image:           "ghcr.io/openfaas/figlet:latest",
-						ImagePullPolicy: corev1.PullAlways,
-					},
-				},
-				SchedulerName: "edge-autoscaler",
-			},
-		},
-	},
-}
-
-var functionPod = &corev1.Pod{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      functionName,
-		Namespace: namespace,
-		Labels: map[string]string{
-			"app":           functionName,
-			"controller":    functionName,
-			"faas_function": functionName,
-		},
-		Annotations: map[string]string{
-			"com.openfaas.function.spec": "something about openfaas",
-		},
-	},
-	TypeMeta: metav1.TypeMeta{
-		Kind:       "Pod",
-		APIVersion: appsv1.SchemeGroupVersion.Identifier(),
-	},
-	Spec: corev1.PodSpec{
-		Containers: []corev1.Container{
-			{
-				Name:            functionName,
-				Image:           "ghcr.io/openfaas/figlet:latest",
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		SchedulerName: "edge-autoscaler",
 	},
 }

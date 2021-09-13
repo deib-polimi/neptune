@@ -196,7 +196,7 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 			return err
 		}
 	}
-
+	
 	return nil
 }
 
