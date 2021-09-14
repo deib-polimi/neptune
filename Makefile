@@ -34,6 +34,7 @@ install-crds: manifests
 e2e: install
 	@echo "run e2e tests"
 	@kubectl apply -f ./config/cluster-conf/e2e-namespace.yaml
+	@kubectl apply -f ./config/openfaas
 	$(call action, e2e)
 	@kubectl delete -f ./config/cluster-conf/e2e-namespace.yaml
 

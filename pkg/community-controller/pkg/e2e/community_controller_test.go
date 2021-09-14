@@ -215,3 +215,6 @@ var function = &openfaasv1.Function{
 		},
 	},
 }
+
+//TODO: ensure that pods are deleted whenever they should be deleted (when more than one are created for the same allocation)
+//TODO: ensure that GPU pods are created

@@ -207,3 +207,5 @@ var _ = Describe("System Controller", func() {
 		})
 	})
 })
+
+// TODO: ensure that once a community is deleted, everything related to the community is deleted
