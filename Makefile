@@ -39,6 +39,7 @@ e2e: install
 
 install-rbac:
 	@echo "install RBAC"
+	@kubectl apply -f ./config/cluster-conf/openfaas-fn-namespace.yaml
 	@kubectl apply -f config/permissions
 
 metric-db:
