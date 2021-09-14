@@ -31,53 +31,33 @@ func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}
 }
 
 // Pod handlers
-// Whenever a pod is unscheduled, schedule it
+// Whenever pods are created or deleted, check if the community schedules allocations are still consistent
 func (c *CommunityController) handlePodAdd(new interface{}) {
-	pod, ok := new.(*corev1.Pod)
-	if ok && c.belongs(pod) {
-		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
-		if err != nil {
-			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
-			return
-		}
-		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
-	}
+	c.handlePod(new)
 }
 
 func (c *CommunityController) handlePodDelete(old interface{}) {
-	pod, ok := old.(*corev1.Pod)
-	if ok && c.belongs(pod) {
-		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
-		if err != nil {
-			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
-			return
-		}
-		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
-	}
+	c.handlePod(old)
 }
 
 func (c *CommunityController) handlePodUpdate(old, new interface{}) {
-	pod, ok := new.(*corev1.Pod)
-	if ok && c.belongs(pod) {
-		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
-		if err != nil {
-			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
-			return
-		}
-		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
-	}
-	pod, ok = old.(*corev1.Pod)
-	if ok && c.belongs(pod) {
-		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
-		if err != nil {
-			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
-			return
-		}
-		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
-	}
+	c.handlePod(old)
+	c.handlePod(new)
 }
 
 func (c *CommunityController) belongs(pod *corev1.Pod) bool {
 	community, ok := pod.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]
 	return ok && community == c.communityName
+}
+
+func (c *CommunityController) handlePod(podObject interface{})  {
+	pod, ok := podObject.(*corev1.Pod)
+	if ok && c.belongs(pod) {
+		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+		if err != nil {
+			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
+			return
+		}
+		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
+	}
 }
