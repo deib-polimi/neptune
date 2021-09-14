@@ -139,7 +139,7 @@ func setup() {
 
 		for _, node := range nodes.Items {
 			for _, condition := range node.Status.Conditions {
-				klog.Info("Node name: %s, Conditions: %s-%s", condition.Type, condition.Status)
+				klog.Info("Node name: %s, Conditions: %s-%s", node, condition.Type, condition.Status)
 				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionFalse {
 					return false
 				}
