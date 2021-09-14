@@ -51,7 +51,7 @@ spec:
       serviceAccountName: sa-monitoring
       containers:
         - name: monitoring
-          image: systemautoscaler/system-autoscaler-monitoring
+          image: systemautoscaler/system-autoscaler-monitoring:dev.1
           imagePullPolicy: Always
           command: [ "/bin/sh", "-c", "--" ]
           args: [ "while true; do sleep 60; done;" ]
