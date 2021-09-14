@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-monitoring
+  namespace: default
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system-autoscaler:sa-monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "nodes"]
+    verbs: ["update", "get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["*"]
+  - apiGroups: ["edgeautoscaler.polimi.it"]
+    resources: ["communityconfigurations", "communityschedules"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system-autoscaler:sa-monitoring
+subjects:
+  - kind: ServiceAccount
+    name: sa-monitoring
+    namespace: default
+    apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: system-autoscaler:sa-monitoring
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: monitoring
+  template:
+    metadata:
+      labels:
+        app: monitoring
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: sa-monitoring
+      containers:
+        - name: monitoring
+          image: systemautoscaler/system-autoscaler-monitoring
+          imagePullPolicy: Always
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 60; done;" ]

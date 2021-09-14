@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS metric
   community VARCHAR(50),
   latency INTEGER,
   gpu BOOLEAN,
+  status INTEGER,
+  description VARCHAR(500),
   PRIMARY KEY (timestamp, source, destination, function, namespace, community)
   );
 
@@ -23,15 +25,15 @@ SELECT add_dimension('metric', 'namespace', number_partitions => 4);
 -- SELECT add_compression_policy('candlestick', INTERVAL '12 month');
 -- SELECT remove_compression_policy('candlestick');
 
-CREATE TABLE IF NOT EXISTS ping
-(
-  timestamp TIMESTAMP,
-  from VARCHAR(50),
-  to VARCHAR(50),
-  avg_latency INTEGER,
-  max_latency INTEGER,
-  min_latency INTEGER
-  PRIMARY KEY (timestamp, from)
-  );
+-- CREATE TABLE IF NOT EXISTS ping
+-- (
+--   timestamp TIMESTAMP,
+--   from VARCHAR(50),
+--   to VARCHAR(50),
+--   avg_latency INTEGER,
+--   max_latency INTEGER,
+--   min_latency INTEGER,
+--   PRIMARY KEY (timestamp, from)
+--   );
 
-SELECT create_hypertable('ping', 'timestamp', chunk_time_interval => INTERVAL '1 minutes');
+-- SELECT create_hypertable('ping', 'timestamp', chunk_time_interval => INTERVAL '1 minutes');
