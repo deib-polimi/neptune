@@ -54,5 +54,5 @@ func init() {
 	flag.StringVar(&Port, "port", "5432", "DB port.")
 	flag.StringVar(&User, "user", "user", "DB user.")
 	flag.StringVar(&Pass, "password", "password", "DB password.")
-	flag.StringVar(&DB, "db", "book_management", "The DB name to use.")
+	flag.StringVar(&DB, "db", "metric", "The DB name to use.")
 }
