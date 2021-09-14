@@ -6,6 +6,7 @@ import (
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"testing"
 	"time"
 
@@ -138,6 +139,7 @@ func setup() {
 
 		for _, node := range nodes.Items {
 			for _, condition := range node.Status.Conditions {
+				klog.Info("Node name: %s, Conditions: %s-%s", condition.Type, condition.Status)
 				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionFalse {
 					return false
 				}
