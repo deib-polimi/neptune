@@ -34,7 +34,7 @@ func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}
 // Whenever a pod is unscheduled, schedule it
 func (c *CommunityController) handlePodAdd(new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && c.checkPod(pod) {
+	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
 		if err != nil {
 			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
@@ -46,7 +46,7 @@ func (c *CommunityController) handlePodAdd(new interface{}) {
 
 func (c *CommunityController) handlePodDelete(old interface{}) {
 	pod, ok := old.(*corev1.Pod)
-	if ok && c.checkPod(pod) {
+	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
 		if err != nil {
 			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
@@ -58,7 +58,7 @@ func (c *CommunityController) handlePodDelete(old interface{}) {
 
 func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 	pod, ok := new.(*corev1.Pod)
-	if ok && c.checkPod(pod) {
+	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
 		if err != nil {
 			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
@@ -67,7 +67,7 @@ func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
 	}
 	pod, ok = old.(*corev1.Pod)
-	if ok && c.checkPod(pod) {
+	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
 		if err != nil {
 			klog.Errorf("Can not retrieve community schedule %s/%s, with error %v", c.communityNamespace, c.communityName, err)
@@ -77,7 +77,7 @@ func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 	}
 }
 
-func (c *CommunityController) checkPod(pod *corev1.Pod) bool {
+func (c *CommunityController) belongs(pod *corev1.Pod) bool {
 	community, ok := pod.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]
 	return ok && community == c.communityName
 }

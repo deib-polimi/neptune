@@ -125,6 +125,9 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		klog.Errorf("can not list pod using selector %v, with error %v", podSelector, err)
 		return err
 	}
+
+	// Find the pods that are correctly deployed
+	// Pods which are not correctly deployed are appended in the deleteSet
 	podsMap := make(map[string]map[string]*corev1.Pod)
 	for _, pod := range pods {
 		// TODO: should try to hand with && in order to make it more responsive, but it will create many pod at time
@@ -146,6 +149,8 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 	}
 
 	// Compute the pod creation set
+	// Pods which are correctly deployed are deleted from podsMap, in this way podsMap will contain only pods
+	// which should be deleted
 	for functionKey, nodes := range functionKeys {
 		fNamespace, fName, err := cache.SplitMetaNamespaceKey(functionKey)
 		if err != nil {
@@ -196,7 +201,7 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 			return err
 		}
 	}
-	
+
 	return nil
 }
 

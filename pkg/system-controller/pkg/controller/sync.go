@@ -5,6 +5,7 @@ import (
 	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/pointer"
 
 	fp "github.com/JohnCGriffin/yogofn"
@@ -213,7 +214,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 	}
 	for _, community := range cc.Status.Communities {
 		if _, ok := cssMap[community]; !ok {
-			cs := NewCommunitySchedule(namespace, community)
+			cs := NewCommunitySchedule(namespace, community, cc)
 			_, err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(cs.Namespace).Create(context.TODO(), cs, metav1.CreateOptions{})
 			if err != nil {
 				klog.Info(err)
@@ -250,7 +251,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 	}
 	for _, community := range cc.Status.Communities {
 		if _, ok := dpsMap[community]; !ok {
-			dp := NewCommunityController(namespace, community)
+			dp := NewCommunityController(namespace, community, cc)
 			_, err = c.kubernetesClientset.AppsV1().Deployments(dp.Namespace).Create(context.TODO(), dp, metav1.CreateOptions{})
 			if err != nil {
 				klog.Info(err)
@@ -273,7 +274,7 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 }
 
 // NewCommunitySchedule returns a new empty community schedule with a given namespace and name
-func NewCommunitySchedule(namespace, name string) *eav1alpha1.CommunitySchedule {
+func NewCommunitySchedule(namespace, name string, conf *eav1alpha1.CommunityConfiguration) *eav1alpha1.CommunitySchedule {
 	return &eav1alpha1.CommunitySchedule{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "edgeautoscaler.polimi.it/v1alpha1",
@@ -282,6 +283,13 @@ func NewCommunitySchedule(namespace, name string) *eav1alpha1.CommunitySchedule 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(conf, schema.GroupVersionKind{
+					Group:   eav1alpha1.SchemeGroupVersion.Group,
+					Version: eav1alpha1.SchemeGroupVersion.Version,
+					Kind:    "CommunityConfiguration",
+				}),
+			},
 		},
 		Spec: eav1alpha1.CommunityScheduleSpec{
 			RoutingRules:     make(eav1alpha1.CommunitySourceRoutingRule),
@@ -292,13 +300,20 @@ func NewCommunitySchedule(namespace, name string) *eav1alpha1.CommunitySchedule 
 }
 
 // NewCommunityController returns a new community controller deployment for a given community
-func NewCommunityController(namespace, name string) *appsv1.Deployment {
+func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityConfiguration) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ealabels.CommunityControllerDeploymentLabel: "",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(conf, schema.GroupVersionKind{
+					Group:   eav1alpha1.SchemeGroupVersion.Group,
+					Version: eav1alpha1.SchemeGroupVersion.Version,
+					Kind:    "CommunityConfiguration",
+				}),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
