@@ -13,7 +13,7 @@ jobs:
 
   e2e:
     name: Run e2e tests on Pull requests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
 
       - uses: actions/checkout@v2
@@ -40,7 +40,7 @@ jobs:
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1.1.0
         with:
-# node_image: "systemautoscaler/kindest-node:latest"
+          node_image: "systemautoscaler/kindest-node:latest"
           config: "./config/cluster-conf/kind.conf"
 
       - name: Deploy CRDs, RBAC in kind and run tests
