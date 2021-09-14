@@ -30,16 +30,19 @@ install: install-crds install-rbac
 install-crds: manifests
 	@echo "install CRDs manifests"
 	@kubectl apply -f config/crd/bases
-
-install-rbac:
-	@echo "install RBAC"
-	@kubectl apply -f config/permissions
+	@echo "install openfaas CRDs manifests"
+	@kubectl apply -f ./config/openfaas
+	@kubectl apply -f ./config/cluster-conf/openfaas-fn-namespace.yaml
 
 e2e: install
 	@echo "run e2e tests"
 	@kubectl apply -f ./config/cluster-conf/e2e-namespace.yaml
 	$(call action, e2e)
 	@kubectl delete -f ./config/cluster-conf/e2e-namespace.yaml
+
+install-rbac:
+	@echo "install RBAC"
+	@kubectl apply -f config/permissions
 
 metric-db:
 	@cd ./config/metric-db

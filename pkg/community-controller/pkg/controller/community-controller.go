@@ -45,7 +45,7 @@ type CommunityController struct {
 	communityConfigurationsSynced cache.InformerSynced
 	communitySchedulesSynced      cache.InformerSynced
 	functionSynced                cache.InformerSynced
-	deploymentsSynced             cache.InformerSynced
+	podsSynced             cache.InformerSynced
 
 	communityName      string
 	communityNamespace string
@@ -58,8 +58,6 @@ type CommunityController struct {
 
 	// syncCommunityScheduleWorkqueue contains the community schedules which have to be synced
 	syncCommunityScheduleWorkqueue queue.Queue
-	// unscheduledPodWorkqueue contains the pods which have to be scheduled
-	unscheduledPodWorkqueue queue.Queue
 }
 
 // NewController returns a new CommunityController
@@ -89,10 +87,9 @@ func NewController(
 		nodeSynced:                     informers.Node.Informer().HasSynced,
 		communityConfigurationsSynced:  informers.CommunityConfiguration.Informer().HasSynced,
 		communitySchedulesSynced:       informers.CommunitySchedule.Informer().HasSynced,
-		deploymentsSynced:              informers.Deployment.Informer().HasSynced,
 		functionSynced:                 informers.Function.Informer().HasSynced,
+		podsSynced:                 		informers.Pod.Informer().HasSynced,
 		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue"),
-		unscheduledPodWorkqueue:        queue.NewQueue("UnscheduledPodWorkqueue"),
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
 	}
@@ -108,6 +105,7 @@ func NewController(
 	informers.Pod.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controller.handlePodAdd,
 		UpdateFunc: controller.handlePodUpdate,
+		DeleteFunc: controller.handlePodDelete,
 	})
 
 	return controller
@@ -129,9 +127,9 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 		stopCh,
 		c.communityConfigurationsSynced,
 		c.communitySchedulesSynced,
-		c.deploymentsSynced,
 		c.nodeSynced,
-		c.functionSynced); !ok {
+		c.functionSynced,
+		c.podsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
@@ -141,7 +139,6 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 	for i := 0; i < threadiness; i++ {
 		// TODO: Currently the scheduler reschedules pods every 30 seconds. It should be change to be triggered by event or as cron jobs
 		go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
-		go wait.Until(c.scheduleUnscheduledPod, time.Second, stopCh)
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
 
@@ -154,17 +151,10 @@ func (c *CommunityController) runPeriodicScheduleWorker() {
 }
 
 // runSyncCommunitySchedule is a worker which looks for inconsistencies between
-// the community schedule and current allocation of pods
-// if any is found, those functions are deleted
+// the community schedule and current allocation of pods.
+// If any are found, pods are created or deleted.
 func (c *CommunityController) runSyncCommunitySchedule() {
-	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunitySchedule) {
-	}
-}
-
-// scheduleUnscheduledPod whenever a pod results to be unscheduled
-// this worker finds a new node for that pod
-func (c *CommunityController) scheduleUnscheduledPod() {
-	for c.unscheduledPodWorkqueue.ProcessNextItem(c.schedulePod) {
+	for c.syncCommunityScheduleWorkqueue.ProcessNextItem(c.syncCommunityScheduleAllocation) {
 	}
 }
 

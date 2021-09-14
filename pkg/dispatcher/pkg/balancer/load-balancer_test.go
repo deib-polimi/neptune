@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
@@ -77,6 +78,7 @@ func TestReverseProxy(t *testing.T) {
 				server := tt.createBackends(url)
 				servers = append(servers, server)
 				go server.ListenAndServe()
+				time.Sleep(5* time.Second)
 			}
 
 			monitoringChan := make(chan metrics.RawResponseTime)

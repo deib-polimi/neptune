@@ -22,6 +22,15 @@ const (
 	// CommunityInstances is the label used to identify the number replicas a community
 	// desires for a certain deployment
 	CommunityInstancesLabel CommunityInstances = "edgeautoscaler.polimi.it/{namespace}.{name}.instances"
+
+	// FunctionNamespaceKey is the label used to identify the function namespace related to the resource
+	FunctionNamespaceLabel string = "edgeautoscaler.polimi.it/function-namespace"
+
+	// FunctionNameKey is the label used to identify the function name related to the resource
+	FunctionNameLabel string = "edgeautoscaler.polimi.it/function-name"
+
+	// FunctionKey is the label used to identify the node related to the resource
+	NodeLabel string = "edgeautoscaler.polimi.it/node"
 )
 
 func (c Community) WithNamespace(ns string) Community {

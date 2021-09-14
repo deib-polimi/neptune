@@ -1,8 +1,12 @@
 package e2e_test
 
 import (
+	"context"
 	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"testing"
 	"time"
 
@@ -111,6 +115,8 @@ var _ = BeforeSuite(func() {
 		close(done)
 	}()
 
+	setup()
+
 	Eventually(done, timeout).Should(BeClosed())
 }, 15)
 
@@ -120,3 +126,29 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
+
+
+func setup() {
+	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	Expect(err).ShouldNot(HaveOccurred())
+
+	// wait for nodes to become ready
+	Eventually(func() bool {
+		nodes, err = kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+		Expect(err).ShouldNot(HaveOccurred())
+
+		for _, node := range nodes.Items {
+			for _, condition := range node.Status.Conditions {
+				klog.Infof("Node name: %s, Conditions: %s-%s", node.Name, condition.Type, condition.Status)
+				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionFalse {
+					return false
+				}
+			}
+		}
+		return true
+
+	}, 15*timeout, interval).Should(BeTrue())
+
+	_, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Create(context.TODO(), cc, metav1.CreateOptions{})
+	Expect(err).ShouldNot(HaveOccurred())
+}
