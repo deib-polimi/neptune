@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -102,6 +101,7 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		Community:   lb.Community,
 		Gpu:         peer.HasGpu,
 		Latency:     int(delta.Milliseconds()),
+		Description: "",
 	}
 
 	if resErr != nil {
@@ -109,16 +109,8 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		requestData.Description = resErr.Error()
 	} else {
 		requestData.StatusCode = res.StatusCode
-		bodyBytes, err := ioutil.ReadAll(res.Body)
-
-		if err != nil {
-			requestData.Description = err.Error()
-		} else {
-			requestData.Description = string(bodyBytes)
-		}
 	}
 
-	lb.metricChan <- requestData
 
 	if resErr != nil {
 		http.Error(w, "Bad gateway", http.StatusBadGateway)
@@ -136,12 +128,16 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 
 	if res.Body != nil {
 		// Copy the body over
-		io.CopyBuffer(w, res.Body, nil)
+		_, err = io.CopyBuffer(w, res.Body, nil)
+		if err != nil {
+			klog.Error(err)
+			requestData.Description = err.Error()
+		}
 	}
 
-	klog.Info("request served")
+	lb.metricChan <- requestData
 
-	return
+	klog.Info("request served")
 
 }
 
