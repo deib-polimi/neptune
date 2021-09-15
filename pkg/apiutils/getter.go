@@ -33,37 +33,34 @@ func NewResourceGetter(
 func (r *ResourceGetter) GetPodsOfFunction(function *openfaasv1.Function) ([]*corev1.Pod, error) {
 	selector := labels.SelectorFromSet(
 		map[string]string{
-			"controller":    function.Name,
-			"faas_function": function.Spec.Name,
+			ealabels.FunctionNamespaceLabel: function.Namespace,
+			ealabels.FunctionNameLabel:      function.Name,
 		})
 	return r.pods(function.Namespace).List(selector)
 }
 
 // GetFunctionOfPod returns the function related to a given pod
 func (r *ResourceGetter) GetFunctionOfPod(pod *corev1.Pod) (*openfaasv1.Function, error) {
-	return r.functions(pod.Namespace).Get(pod.ObjectMeta.Labels["controller"])
+	namespace, ok := pod.Labels[ealabels.FunctionNamespaceLabel]
+	if !ok {
+		return nil, fmt.Errorf("function namespace not found in labels %v", pod.Labels)
+	}
+	name, ok := pod.Labels[ealabels.FunctionNameLabel]
+	if !ok {
+		return nil, fmt.Errorf("function name not found in labels %v", pod.Labels)
+	}
+	return r.functions(namespace).Get(name)
 }
 
 // GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
 func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string) ([]*corev1.Pod, error) {
-	pods, err := r.GetPodsOfFunction(function)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve pods: %s", err)
-	}
-
-	var podsInNode []*corev1.Pod
-	for _, pod := range pods {
-		if pod.Spec.NodeName == nodeName {
-			podsInNode = append(podsInNode, pod)
-		}
-	}
-
-	if len(podsInNode) == 0 {
-		return nil, fmt.Errorf("no pods found in node %s", nodeName)
-	}
-
-	return podsInNode, nil
+	selector := labels.SelectorFromSet(
+		map[string]string{
+			ealabels.FunctionNamespaceLabel: function.Namespace,
+			ealabels.FunctionNameLabel:      function.Name,
+			ealabels.NodeLabel:              nodeName,
+		})
+	return r.pods(function.Namespace).List(selector)
 }
 
 func (r *ResourceGetter) GetNodeDelays(community, communityNamespace string) ([][]int64, error) {
