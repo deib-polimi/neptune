@@ -19,10 +19,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const (
-	schedulerServiceURL = "http://localhost:5000/schedule"
-)
-
 type SchedulingInput struct {
 	NodeNames         []string `json:"node_names"`
 	GpuNodeNames      []string `json:"gpu_node_names"`
@@ -114,7 +110,7 @@ func NewSchedulingInput(
 
 	functionMaxDelays := make([]int64, 0)
 	for _, function := range functions {
-		value, ok := (*function.Spec.Labels)[ealabels.FunctionMaxDelayLabel]
+		value, ok := function.Labels[ealabels.FunctionMaxDelayLabel]
 		if ok {
 			maxDelay, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
