@@ -45,7 +45,7 @@ type CommunityController struct {
 	communityConfigurationsSynced cache.InformerSynced
 	communitySchedulesSynced      cache.InformerSynced
 	functionSynced                cache.InformerSynced
-	podsSynced             cache.InformerSynced
+	podsSynced                    cache.InformerSynced
 
 	communityName      string
 	communityNamespace string
@@ -88,7 +88,7 @@ func NewController(
 		communityConfigurationsSynced:  informers.CommunityConfiguration.Informer().HasSynced,
 		communitySchedulesSynced:       informers.CommunitySchedule.Informer().HasSynced,
 		functionSynced:                 informers.Function.Informer().HasSynced,
-		podsSynced:                 		informers.Pod.Informer().HasSynced,
+		podsSynced:                     informers.Pod.Informer().HasSynced,
 		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue"),
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
@@ -98,18 +98,18 @@ func NewController(
 
 	klog.Info("Setting up event handlers")
 	informers.CommunitySchedule.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleCommunityScheduleAdd,
+		AddFunc:    controller.handleCommunitySchedule,
+		DeleteFunc: controller.handleCommunitySchedule,
 		UpdateFunc: controller.handleCommunityScheduleUpdate,
-		DeleteFunc: controller.handleCommunityScheduleDelete,
 	})
 	informers.Pod.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handlePodAdd,
+		AddFunc:    controller.handlePod,
+		DeleteFunc: controller.handlePod,
 		UpdateFunc: controller.handlePodUpdate,
-		DeleteFunc: controller.handlePodDelete,
 	})
 	informers.Node.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    controller.handleNodeAdd,
-		DeleteFunc: controller.handleNodeDelete,
+		AddFunc:    controller.handleNode,
+		DeleteFunc: controller.handleNode,
 		UpdateFunc: controller.handleNodeUpdate,
 	})
 

@@ -9,79 +9,34 @@ import (
 
 // Community Schedule handlers
 // Whenever a Community Schedule event is generated check if any pods is misplaced
-func (c *CommunityController) handleCommunityScheduleAdd(new interface{}) {
-	cs, ok := new.(*eav1alpha1.CommunitySchedule)
-	if ok && cs.Namespace == c.communityNamespace && cs.Name == c.communityName {
-		c.syncCommunityScheduleWorkqueue.Enqueue(new)
-	}
-}
-
-func (c *CommunityController) handleCommunityScheduleDelete(old interface{}) {
-	cs, ok := old.(*eav1alpha1.CommunitySchedule)
-	if ok && cs.Namespace == c.communityNamespace && cs.Name == c.communityName {
-		c.syncCommunityScheduleWorkqueue.Enqueue(old)
-	}
+func (c *CommunityController) handleCommunitySchedule(obj interface{}) {
+	c.processCommunitySchedule(obj)
 }
 
 func (c *CommunityController) handleCommunityScheduleUpdate(old, new interface{}) {
-	cs, ok := new.(*eav1alpha1.CommunitySchedule)
-	if ok && cs.Namespace == c.communityNamespace && cs.Name == c.communityName {
-		c.syncCommunityScheduleWorkqueue.Enqueue(new)
-	}
+	c.processCommunitySchedule(new)
 }
 
 // Node handlers
 // Whenever a node leaves or join a community
-func (c *CommunityController) handleNodeAdd(new interface{}) {
-	if node, ok := new.(*corev1.Node); ok {
-		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
-			if nodeCommunity == c.communityName {
-				_ = c.runScheduler("")
-			}
-		}
-	}
-}
-
-func (c *CommunityController) handleNodeDelete(old interface{}) {
-	if node, ok := old.(*corev1.Node); ok {
-		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
-			if nodeCommunity == c.communityName {
-				_ = c.runScheduler("")
-			}
-		}
-	}
+func (c *CommunityController) handleNode(new interface{}) {
+	c.processNode(new)
 }
 
 func (c *CommunityController) handleNodeUpdate(old, new interface{}) {
-	if node, ok := old.(*corev1.Node); ok {
-		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
-			if nodeCommunity == c.communityName {
-				_ = c.runScheduler("")
-			}
-		}
-	}
-	if node, ok := new.(*corev1.Node); ok {
-		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
-			if nodeCommunity == c.communityName {
-				_ = c.runScheduler("")
-			}
-		}
-	}
+	c.processNode(old)
+	c.processNode(new)
 }
 
 // Pod handlers
 // Whenever pods are created or deleted, check if the community schedules allocations are still consistent
-func (c *CommunityController) handlePodAdd(new interface{}) {
-	c.handlePod(new)
-}
-
-func (c *CommunityController) handlePodDelete(old interface{}) {
-	c.handlePod(old)
+func (c *CommunityController) handlePod(new interface{}) {
+	c.processPod(new)
 }
 
 func (c *CommunityController) handlePodUpdate(old, new interface{}) {
-	c.handlePod(old)
-	c.handlePod(new)
+	c.processPod(old)
+	c.processPod(new)
 }
 
 func (c *CommunityController) belongs(pod *corev1.Pod) bool {
@@ -89,7 +44,8 @@ func (c *CommunityController) belongs(pod *corev1.Pod) bool {
 	return ok && community == c.communityName
 }
 
-func (c *CommunityController) handlePod(podObject interface{}) {
+// check if a pod belongs to the community managed by the coomunity controller and process the corresponding community schedule
+func (c *CommunityController) processPod(podObject interface{}) {
 	pod, ok := podObject.(*corev1.Pod)
 	if ok && c.belongs(pod) {
 		cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
@@ -98,5 +54,24 @@ func (c *CommunityController) handlePod(podObject interface{}) {
 			return
 		}
 		c.syncCommunityScheduleWorkqueue.Enqueue(cs)
+	}
+}
+
+// check if a node belongs to the community managed by the community controller and triggers the scheduling process to place pods on it
+func (c *CommunityController) processNode(nodeObject interface{}) {
+	if node, ok := nodeObject.(*corev1.Node); ok {
+		if nodeCommunity, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]; ok {
+			if nodeCommunity == c.communityName {
+				_ = c.runScheduler("")
+			}
+		}
+	}
+}
+
+// check if a community schedule belong to the controller and syncs it
+func (c *CommunityController) processCommunitySchedule(csObject interface{}) {
+	cs, ok := csObject.(*eav1alpha1.CommunitySchedule)
+	if ok && cs.Namespace == c.communityNamespace && cs.Name == c.communityName {
+		c.syncCommunityScheduleWorkqueue.Enqueue(csObject)
 	}
 }

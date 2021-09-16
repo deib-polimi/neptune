@@ -147,21 +147,3 @@ func (p *MetricsPersistor) save(batch []metrics.RawResponseTime) error {
 
 	return err
 }
-
-// // PollMetrics receives metrics from the load balancer and persists them to a backend until the chan is closed.
-// func (p *MetricsPersistor) PollMetrics() {
-// 	for {
-// 		m, ok := <-p.metrichChan
-// 		if !ok {
-// 			p.Stop()
-// 			return
-// 		}
-
-// 		go func() {
-// 			err := p.save(m)
-// 			if err != nil {
-// 				fmt.Print(fmt.Errorf("failed to save metric %v, error: %s", m, err))
-// 			}
-// 		}()
-// 	}
-// }

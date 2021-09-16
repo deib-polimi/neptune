@@ -109,7 +109,6 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			}
 
 			for destination, workload := range destinationRules {
-				//TODO: it happens quite often that this function does not retrieve all the needed pods
 				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination)
 
 				klog.Info("pods of function")

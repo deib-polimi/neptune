@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/klog/v2"
 
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
@@ -79,9 +78,11 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 	for _, community := range communities {
 		for _, member := range community.Members {
 			//patch the node with new labels
-			node, ok := nodeMap[member.Name]
-			klog.Info(member.Labels)
-			if !ok {
+
+			var node *corev1.Node
+			var ok bool
+
+			if node, ok = nodeMap[member.Name]; !ok {
 				utilruntime.HandleError(fmt.Errorf("Node %s not in node map", member.Name))
 				continue
 			}
