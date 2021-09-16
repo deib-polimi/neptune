@@ -27,3 +27,4 @@ pkg/dispatcher/dispatcher
 pkg/dispatcher/pkg/controller/loadbalancer-controller.go
 */admission-registration-subst.yaml
 deploy/kosmos.pem
+deploy/k3s
