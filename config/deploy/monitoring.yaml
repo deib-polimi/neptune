@@ -16,8 +16,11 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["*"]
-  - apiGroups: ["edgeautoscaler.polimi.it"]
-    resources: ["communityconfigurations", "communityschedules"]
+  - apiGroups: ["systemautoscaler.polimi.it"]
+    resources: ["servicelevelagreements"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["systemautoscaler.polimi.it"]
+    resources: ["podscales"]
     verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -35,23 +38,24 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: monitoring
 spec:
   selector:
     matchLabels:
       app: monitoring
+  replicas: 1
   template:
     metadata:
       labels:
         app: monitoring
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
       automountServiceAccountToken: true
       serviceAccountName: sa-monitoring
       containers:
         - name: monitoring
           image: systemautoscaler/system-autoscaler-monitoring:dev.1
           imagePullPolicy: Always
-          command: [ "/bin/sh", "-c", "--" ]
-          args: [ "while true; do sleep 60; done;" ]

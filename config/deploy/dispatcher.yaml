@@ -8,13 +8,15 @@ metadata:
 spec:
   selector:
     matchLabels:
-      name: dispatcher
+      app: dispatcher
   template:
     metadata:
       labels:
-        name: dispatcher
+        app: dispatcher
     spec:
       automountServiceAccountToken: true
+      nodeSelector:
+        kubernetes.io/kind: worker
       serviceAccountName: dispatcher
       # tolerations:
         # this toleration is to have the daemonset runnable on master nodes
@@ -24,11 +26,25 @@ spec:
 #          effect: NoSchedule
       containers:
         - name: dispatcher
-          image: systemautoscaler/dispatcher:dev.1
+          image: systemautoscaler/dispatcher:dev
           imagePullPolicy: Always
-          resources:
+          ports:
+            - containerPort: 8080
           env:
           - name: NODE_NAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dispatcher
+  labels:
+    app: dispatcher
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: dispatcher
+
