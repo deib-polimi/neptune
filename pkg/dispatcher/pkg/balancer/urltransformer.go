@@ -49,8 +49,6 @@ func (u UpstreamRequestBuilder) Build() *http.Request {
 		url = fmt.Sprintf("%s?%s", url, u.Request.URL.RawQuery)
 	}
 
-	klog.Infof("forwarding requesto to %v", url)
-
 	upstreamReq, err := http.NewRequest(u.Request.Method, url, nil)
 	upstreamReq.URL.Scheme = u.Backend.URL.Scheme
 

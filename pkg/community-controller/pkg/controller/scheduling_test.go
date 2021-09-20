@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -51,94 +52,6 @@ func TestNewSchedulingInput(t *testing.T) {
 			nMaxDelays:  nFunctions,
 			expectError: true,
 		},
-		{
-			description: "no functions scenario",
-			nNodes:      nNodes,
-			nFunctions:  0,
-			xDelays:     nNodes,
-			yDelays:     nNodes,
-			xWorkload:   nNodes,
-			yWorkload:   0,
-			nMaxDelays:  0,
-			expectError: true,
-		},
-		{
-			description: "delay matrix mismatch scenario x-axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes - 1,
-			yDelays:     nNodes,
-			xWorkload:   nNodes,
-			yWorkload:   nFunctions,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "delay matrix mismatch scenario y-axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes,
-			yDelays:     nNodes - 1,
-			xWorkload:   nNodes,
-			yWorkload:   nFunctions,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "delay matrix mismatch scenario both axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes - 1,
-			yDelays:     nNodes - 1,
-			xWorkload:   nNodes,
-			yWorkload:   nFunctions,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "workload mismatch scenario x-axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes,
-			yDelays:     nNodes,
-			xWorkload:   nNodes - 1,
-			yWorkload:   nFunctions,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "workload mismatch scenario y-axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes,
-			yDelays:     nNodes,
-			xWorkload:   nNodes,
-			yWorkload:   nFunctions - 1,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "workload mismatch scenario both axis",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes,
-			yDelays:     nNodes,
-			xWorkload:   nNodes - 1,
-			yWorkload:   nFunctions - 1,
-			nMaxDelays:  nFunctions,
-			expectError: true,
-		},
-		{
-			description: "max delays mismatch scenario",
-			nNodes:      nNodes,
-			nFunctions:  nFunctions,
-			xDelays:     nNodes,
-			yDelays:     nNodes,
-			xWorkload:   nNodes,
-			yWorkload:   nFunctions,
-			nMaxDelays:  nFunctions - 1,
-			expectError: true,
-		},
 	}
 
 	for _, tt := range testcases {
@@ -154,11 +67,7 @@ func TestNewSchedulingInput(t *testing.T) {
 				functions[i] = newRandomFakeFunction(i)
 			}
 
-			delays := newIntMatrix(tt.xDelays, tt.yDelays)
-			workload := newIntMatrix(tt.xWorkload, tt.yWorkload)
-			maxDelays := newIntArray(tt.nMaxDelays)
-
-			result, err := NewSchedulingInput(nodes, functions, delays, workload, maxDelays)
+			result, err := NewSchedulingInput(nodes, functions)
 			if err != nil {
 				require.True(t, tt.expectError)
 			} else {
@@ -216,11 +125,7 @@ func TestSchedule(t *testing.T) {
 				functions[i] = newRandomFakeFunction(i)
 			}
 
-			delays := newIntMatrix(tt.xDelays, tt.yDelays)
-			workload := newIntMatrix(tt.xWorkload, tt.yWorkload)
-			maxDelays := newIntArray(tt.nMaxDelays)
-
-			result, err := NewSchedulingInput(nodes, functions, delays, workload, maxDelays)
+			result, err := NewSchedulingInput(nodes, functions)
 
 			if err != nil {
 				require.True(t, tt.expectError)
@@ -322,6 +227,12 @@ func newRandomFakeFunction(randomSeed int) *openfaasv1.Function {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      strconv.Itoa(randomSeed),
 			Namespace: strconv.Itoa(randomSeed),
+			Labels: map[string]string{
+				ealabels.GpuLabel:              "true",
+				ealabels.GpuMemoryLabel:        "10000",
+				ealabels.GpuFunctionLabel:      "gpu-function",
+				ealabels.FunctionMaxDelayLabel: "1000",
+			},
 		},
 		Spec: openfaasv1.FunctionSpec{
 			Limits: &openfaasv1.FunctionResources{
@@ -334,16 +245,4 @@ func newRandomFakeFunction(randomSeed int) *openfaasv1.Function {
 			},
 		},
 	}
-}
-
-func newIntMatrix(width int, height int) [][]int64 {
-	a := make([][]int64, width)
-	for i := range a {
-		a[i] = make([]int64, height)
-	}
-	return a
-}
-
-func newIntArray(n int) []int64 {
-	return make([]int64, n)
 }

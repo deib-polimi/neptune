@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	lbcontroller "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/controller"
@@ -55,6 +56,8 @@ func main() {
 	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Second*30)
 	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Minute*30)
 
+	node = getenv("NODE_NAME", "")
+
 	informers := informerswrapper.Informers{
 		Pod:                    coreInformerFactory.Core().V1().Pods(),
 		Node:                   coreInformerFactory.Core().V1().Nodes(),
@@ -76,7 +79,7 @@ func main() {
 	eaInformerFactory.Start(stopCh)
 	openfaasInformerFactory.Start(stopCh)
 
-	if err = lbController.Run(2, stopCh); err != nil {
+	if err = lbController.Run(1, stopCh); err != nil {
 		klog.Fatalf("Error running system controller: %s", err.Error())
 	}
 	defer lbController.Shutdown()
@@ -88,5 +91,13 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&node, "node", "", "The node on which the dispatcher is running")
+	//flag.StringVar(&node, "node", "", "The node on which the dispatcher is running")
+}
+
+func getenv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
 }

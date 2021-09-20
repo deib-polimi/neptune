@@ -127,7 +127,6 @@ var _ = AfterSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-
 func setup() {
 	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	Expect(err).ShouldNot(HaveOccurred())

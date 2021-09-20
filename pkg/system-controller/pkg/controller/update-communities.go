@@ -78,9 +78,11 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 	for _, community := range communities {
 		for _, member := range community.Members {
 			//patch the node with new labels
-			node, ok := nodeMap[member.Name]
 
-			if !ok {
+			var node *corev1.Node
+			var ok bool
+
+			if node, ok = nodeMap[member.Name]; !ok {
 				utilruntime.HandleError(fmt.Errorf("Node %s not in node map", member.Name))
 				continue
 			}

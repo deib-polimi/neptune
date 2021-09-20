@@ -16,6 +16,9 @@ import (
 )
 
 func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
+
+	klog.Infof("syncing community schedule %s", key)
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 
@@ -52,6 +55,8 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 		return err
 	}
 
+	klog.Infof("syncing community schedule %s/%s", namespace, name)
+
 	// retrieve routing rules
 	sourceRules := cs.Spec.RoutingRules
 
@@ -59,6 +64,8 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 		if source != node.Name {
 			continue
 		}
+
+		klog.Infof("source node %s\n", source)
 
 		functions := []string{}
 
@@ -78,52 +85,62 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 				utilruntime.HandleError(fmt.Errorf("couldn't find function %s: %v", funcName, err))
 				continue
 			}
+			klog.Infof("route to function %s\n", functionNamespaceName)
 
 			var lb *balancer.LoadBalancer
-			var exist bool
 
-			// create a new load balancer if it does not exist
-			// TODO: check key
-			if lb, exist = c.balancers[functionNamespaceName]; !exist {
-				// lb = balancer.NewLoadBalancer(c.monitoringChan)
+			value, _ := c.balancers.LoadOrStore(functionNamespaceName, balancer.NewLoadBalancer(
+				balancer.NodeInfo{
+					Node:      source,
+					Function:  funcName,
+					Namespace: funcNamespace,
+					Community: community,
+				},
+				c.metricChan,
+			))
 
-				lb = balancer.NewLoadBalancer(
-					balancer.NodeInfo{
-						Node:      source,
-						Function:  funcName,
-						Namespace: funcNamespace,
-						Community: community,
-					},
-					c.metricChan,
-				)
-				c.balancers[functionNamespaceName] = lb
-			}
+			lb = value.(*balancer.LoadBalancer)
 
 			actualBackends := []*url.URL{}
+			klog.Infof("backend in routing rules for function: %v in node: %v", functionNamespaceName, source)
+
+			for destination := range destinationRules {
+				klog.Infof("destination: %v", destination)
+			}
 
 			for destination, workload := range destinationRules {
 				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination)
+
+				klog.Info("pods of function")
+
+				for _, pod := range pods {
+					klog.Infof("pod: %v in node: %v", pod.Name, pod.Spec.NodeName)
+				}
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
 					continue
 				}
 
+				klog.Info("destination nodes\n")
+
 				for _, pod := range pods {
 					// TODO: handle nodes with GPU and CPU
 					// TODO: find better way to retrieve function port
-					klog.Info(fmt.Sprintf("adding balancer for http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
+
+					if !isPodReady(pod) {
+						continue
+					}
+
 					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, pod.Spec.Containers[0].Ports[0].ContainerPort))
-					destinationURL.Scheme = "http"
 
 					if err != nil {
 						utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
 						continue
 					}
 
-					// sync load balancer backends with the new rules
+					// sync load balancer backends with the new weights
 					if !lb.ServerExists(destinationURL) {
-						//TODO: remove recovery func
 						// TODO: add mechanism to detect gpu instead of a hardcoded false bool
 						lb.AddServer(destinationURL, destination, false, &workload, func(req *queue.HTTPRequest) {})
 					} else {
@@ -154,4 +171,13 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 
 	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
+}
+
+func isPodReady(pod *corev1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }

@@ -19,6 +19,23 @@ type RawResponseTime struct {
 	Community   string
 	Gpu         bool
 	Latency     int
+	StatusCode  int
+	Description string
+}
+
+func (r RawResponseTime) AsCopy() []interface{} {
+	return []interface{}{
+		r.Timestamp,
+		r.Source,
+		r.Destination,
+		r.Function,
+		r.Namespace,
+		r.Community,
+		r.Gpu,
+		r.Latency,
+		r.StatusCode,
+		r.Description,
+	}
 }
 
 // ExposedMetrics is a struct that wraps the exposed metrics

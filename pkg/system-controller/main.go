@@ -50,9 +50,9 @@ func main() {
 		klog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Minute*30)
-	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Minute*30)
-	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Minute*30)
+	eaInformerFactory := eainformers.NewSharedInformerFactory(eaclient, time.Second*30)
+	coreInformerFactory := informers.NewSharedInformerFactory(kubernetesClient, time.Second*30)
+	openfaasInformerFactory := openfaasinformers.NewSharedInformerFactory(openfaasClient, time.Second*30)
 
 	informers := informerswrapper.Informers{
 		Pod:                    coreInformerFactory.Core().V1().Pods(),
@@ -96,3 +96,11 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }
+
+// TODO: sometimes community are not deleted correctly
+// TODO: sometimes community schedules are deleted when the dispatcher daemonset is deleted
+// TODO: sometimes the label of function replicas per community is not correctly cleared
+// TODO: do need sync dp replicas if no changes are required
+// TODO: clear function deployments instance labels
+// TODO: update community schedules with all-algo when community configuration is update
+// TODO: check pod deletion policy for community controller

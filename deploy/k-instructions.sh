@@ -13,12 +13,6 @@ kubectl apply -f config/deploy/slpa.yaml
 kubectl apply -f config/deploy/timescale-db.yaml
 kubectl apply -f config/deploy/system-controller.yaml
 
-
-cd function-deployment-webhook/
-./deploy/instructions.sh
-
-cd ..
-
 sleep 15
 
 kubectl apply -f config/deploy/dispatcher.yaml

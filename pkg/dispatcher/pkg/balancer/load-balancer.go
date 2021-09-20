@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -71,6 +70,7 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Service not available", http.StatusServiceUnavailable)
+		return
 	}
 
 	transformer := UpstreamRequestBuilder{
@@ -84,22 +84,15 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		defer upstreamReq.Body.Close()
 	}
 
-	log.Printf("forwardRequest: %s %s\n", upstreamReq.Host, upstreamReq.URL.String())
-
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*90)
 	defer cancel()
 
 	start := time.Now()
 	res, resErr := peer.Client.Do(upstreamReq.WithContext(ctx))
 
-	if resErr != nil {
-		badStatus := http.StatusBadGateway
-		w.WriteHeader(badStatus)
-		return
-	}
 	delta := time.Since(start)
 
-	lb.metricChan <- metrics.RawResponseTime{
+	requestData := metrics.RawResponseTime{
 		Timestamp:   start,
 		Source:      lb.Node,
 		Function:    lb.Function,
@@ -108,6 +101,19 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		Community:   lb.Community,
 		Gpu:         peer.HasGpu,
 		Latency:     int(delta.Milliseconds()),
+		Description: "",
+	}
+
+	if resErr != nil {
+		requestData.StatusCode = http.StatusBadGateway
+		requestData.Description = resErr.Error()
+	} else {
+		requestData.StatusCode = res.StatusCode
+	}
+
+	if resErr != nil {
+		http.Error(w, "Bad gateway", http.StatusBadGateway)
+		return
 	}
 
 	if res.Body != nil {
@@ -121,28 +127,23 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 
 	if res.Body != nil {
 		// Copy the body over
-		io.CopyBuffer(w, res.Body, nil)
+		_, err = io.CopyBuffer(w, res.Body, nil)
+		if err != nil {
+			klog.Error(err)
+			requestData.Description = err.Error()
+		}
 	}
 
-	klog.Info("request served")
+	lb.metricChan <- requestData
 
-	return
+	klog.Info("request served")
 
 }
 
 // AddServer adds a new backend to the server pool
 func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, workload *resource.Quantity, recovery recoveryFunc) {
-	klog.Infof("Adding server: %v", serverURL.String())
 
-	// TODO: this does not work
-	// proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
-	// 	utilruntime.HandleError(fmt.Errorf("error while serving request to backend %v: %v", request.URL.Host, e))
-	// 	// enqueue the request again if it cannot be served by a backend
-	// 	recovery(&queue.HTTPRequest{
-	// 		ResponseWriter: writer,
-	// 		Request:        request,
-	// 	})
-	// }
+	// TODO: implement recovery policies. recoveryFunc can be used for this purpose.
 
 	b := pool.Backend{
 		URL:    serverURL,
@@ -151,20 +152,17 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, 
 		Client: &http.Client{
 			Transport: &http.Transport{
 				DialContext: (&net.Dialer{
-					Timeout: 90 * time.Second,
+					KeepAlive: 5 * time.Minute,
+					Timeout:   90 * time.Second,
 				}).DialContext,
-				// TODO: Some of those value should be tuned
 				IdleConnTimeout:       90 * time.Second,
 				ExpectContinueTimeout: 5 * time.Second,
-				MaxIdleConnsPerHost:   1000,
-				MaxIdleConns:          1000,
-				MaxConnsPerHost:       1000,
 			},
-			Timeout: time.Second * 90,
+			Timeout: time.Second * 10,
 		},
 	}
 
-	lb.serverPool.SetBackend(b, workload)
+	lb.serverPool.SetBackend(b, int(workload.MilliValue()))
 }
 
 // DeleteServer removes a backend from the pool
@@ -193,7 +191,7 @@ func (lb *LoadBalancer) UpdateWorkload(serverURL *url.URL, workload *resource.Qu
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)
 	}
 
-	lb.serverPool.SetBackend(b, workload)
+	lb.serverPool.SetBackend(b, int(workload.MilliValue()))
 	return nil
 }
 
