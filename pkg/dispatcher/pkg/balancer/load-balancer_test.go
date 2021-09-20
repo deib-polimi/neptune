@@ -78,7 +78,7 @@ func TestReverseProxy(t *testing.T) {
 				server := tt.createBackends(url)
 				servers = append(servers, server)
 				go server.ListenAndServe()
-				time.Sleep(5* time.Second)
+				time.Sleep(5 * time.Second)
 			}
 
 			monitoringChan := make(chan metrics.RawResponseTime)

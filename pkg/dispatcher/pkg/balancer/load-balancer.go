@@ -111,7 +111,6 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		requestData.StatusCode = res.StatusCode
 	}
 
-
 	if resErr != nil {
 		http.Error(w, "Bad gateway", http.StatusBadGateway)
 		return
@@ -144,19 +143,7 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 // AddServer adds a new backend to the server pool
 func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, workload *resource.Quantity, recovery recoveryFunc) {
 
-	// proxy := httputil.NewSingleHostReverseProxy(serverURL)
-	// // TODO: this does not work
-	// proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
-	// 	utilruntime.HandleError(fmt.Errorf("error while serving request to backend %v: %v", request.URL.Host, e))
-	// 	// enqueue the request again if it cannot be served by a backend
-	// 	http.Error(writer, "Service not available", http.StatusServiceUnavailable)
-	// }
-	// proxy.Transport = &http.Transport{
-	// 	DialContext: (&net.Dialer{
-	// 		KeepAlive: 5 * time.Minute,
-	// 		Timeout:   90 * time.Second,
-	// 	}).DialContext,
-	// }
+	// TODO: implement recovery policies. recoveryFunc can be used for this purpose.
 
 	b := pool.Backend{
 		URL:    serverURL,
@@ -180,7 +167,7 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, 
 
 // DeleteServer removes a backend from the pool
 func (lb *LoadBalancer) DeleteServer(serverURL *url.URL) error {
-	b, _, exists := lb.serverPool.GetBackend(serverURL)
+	b, exists := lb.serverPool.GetBackend(serverURL)
 
 	if !exists {
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)
@@ -192,13 +179,13 @@ func (lb *LoadBalancer) DeleteServer(serverURL *url.URL) error {
 
 // ServerExists checks if a backend exists in the pool
 func (lb *LoadBalancer) ServerExists(serverURL *url.URL) (exists bool) {
-	_, _, exists = lb.serverPool.GetBackend(serverURL)
+	_, exists = lb.serverPool.GetBackend(serverURL)
 	return exists
 }
 
 // UpdateWorkload set the new server weight
 func (lb *LoadBalancer) UpdateWorkload(serverURL *url.URL, workload *resource.Quantity) error {
-	b, _, exists := lb.serverPool.GetBackend(serverURL)
+	b, exists := lb.serverPool.GetBackend(serverURL)
 
 	if !exists {
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)

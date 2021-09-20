@@ -37,7 +37,7 @@ func TestPool(t *testing.T) {
 
 			verifyFunc: func(t *testing.T, p *ServerPool) {
 				for _, desired := range backends {
-					actual, _, found := p.GetBackend(desired.URL)
+					actual, found := p.GetBackend(desired.URL)
 					require.True(t, found)
 					require.Equal(t, desired, actual)
 				}
@@ -51,25 +51,13 @@ func TestPool(t *testing.T) {
 				expectedLength := len(backends)
 				for _, b := range backends {
 					p.RemoveBackend(b)
-					actual, _, found := p.GetBackend(b.URL)
+					actual, found := p.GetBackend(b.URL)
 					require.False(t, found)
 					require.Equal(t, Backend{}, actual)
 
 					require.Equal(t, expectedLength-1, len(p.backends))
 					expectedLength--
 				}
-			},
-		},
-		{
-			description: "update backend weight",
-			input:       backends,
-
-			verifyFunc: func(t *testing.T, p *ServerPool) {
-				p.SetBackend(backends[0], 1)
-				b, weight, found := p.GetBackend(backends[0].URL)
-				require.True(t, found)
-				require.Equal(t, backends[0], b)
-				require.Equal(t, 1, weight)
 			},
 		},
 		{

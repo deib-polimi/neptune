@@ -1,21 +1,21 @@
-	package e2e_test
+package e2e_test
 
-	import (
-		"context"
-		"testing"
-		"time"
+import (
+	"context"
+	"testing"
+	"time"
 
-		"github.com/emirpasic/gods/sets/hashset"
+	"github.com/emirpasic/gods/sets/hashset"
 
-		ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
-		"github.com/stretchr/testify/assert"
+	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
+	"github.com/stretchr/testify/assert"
 
-		eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
-		. "github.com/onsi/ginkgo"
-		. "github.com/onsi/gomega"
-		corev1 "k8s.io/api/core/v1"
-		metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	)
+	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 const namespace = "e2e"
 const slpaNamespace = "kube-system"
@@ -54,9 +54,6 @@ var _ = Describe("System Controller", func() {
 		generatedCommunities := hashset.New()
 
 		ctx := context.Background()
-
-
-
 
 		It("Assign labels to all worker nodes", func() {
 
@@ -209,4 +206,3 @@ var _ = Describe("System Controller", func() {
 })
 
 // TODO: ensure that once a community is deleted, everything related to the community is deleted
-

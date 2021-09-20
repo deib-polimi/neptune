@@ -71,16 +71,14 @@ func (s *ServerPool) RemoveBackend(b Backend) {
 
 // GetBackend returns a backend given its URL. It returns the backend and bool
 // if the server exists
-func (s *ServerPool) GetBackend(url *url.URL) (backend Backend, weight int, found bool) {
+func (s *ServerPool) GetBackend(url *url.URL) (backend Backend, found bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	found = false
 	backend = Backend{}
-	weight = 0
 	for _, choice := range s.backends {
 		if choice.Item.(Backend).URL.String() == url.String() {
 			backend = choice.Item.(Backend)
-			weight = choice.Weight
 			found = true
 			return
 		}

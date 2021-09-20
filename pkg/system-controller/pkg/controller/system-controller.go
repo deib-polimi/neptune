@@ -83,16 +83,16 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &SystemController{
-		edgeAutoscalerClientSet:         eaClientSet,
-		kubernetesClientset:             kubernetesClientset,
-		communityUpdater:                communityUpdater,
-		communityGetter:                 communityGetter,
-		recorder:                        recorder,
-		listers:                         informers.GetListers(),
-		nodeSynced:                      informers.Node.Informer().HasSynced,
-		communityConfigurationsSynced:   informers.CommunityConfiguration.Informer().HasSynced,
-		syncConfigurationsWorkqueue:     queue.NewQueue("CommunityConfigurationsQueue"),
-		syncSchedulesWorkqueue:          queue.NewQueue("CommunityScheduleQueue"),
+		edgeAutoscalerClientSet:       eaClientSet,
+		kubernetesClientset:           kubernetesClientset,
+		communityUpdater:              communityUpdater,
+		communityGetter:               communityGetter,
+		recorder:                      recorder,
+		listers:                       informers.GetListers(),
+		nodeSynced:                    informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
+		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue"),
+		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
@@ -150,7 +150,6 @@ func (c *SystemController) runSyncSchedulesWorker() {
 	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
 	}
 }
-
 
 // control loop to handle performance degradation inside communities
 func (c *SystemController) runPerformanceDegradationObserver() {
