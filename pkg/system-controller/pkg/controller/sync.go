@@ -210,34 +210,31 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 			return err
 		}
 	}
-
-	cssMap := make(map[string]*eav1alpha1.CommunitySchedule, len(css))
+	actualCss := make([]string, 0)
 	for _, cs := range css {
-		key := fmt.Sprintf("%s/%s", cs.Namespace, cs.Name)
-		cssMap[key] = cs
+		actualCss = append(actualCss, cs.Name)
 	}
-	for _, community := range cc.Status.Communities {
-		if _, ok := cssMap[community]; !ok {
-			cs := NewCommunitySchedule(namespace, community, cc)
-			_, err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(cs.Namespace).Create(context.TODO(), cs, metav1.CreateOptions{})
-			if err != nil {
-				klog.Info(err)
-				return err
-			}
-			klog.Infof("new community schedule %s has been created", key)
-		} else {
-			delete(cssMap, key)
-		}
-	}
-	for _, inconsistentCs := range cssMap {
-		err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(inconsistentCs.Namespace).Delete(context.TODO(), inconsistentCs.Name, metav1.DeleteOptions{})
+	csCreateSet, csDeleteSet := diff(cc.Status.Communities, actualCss)
+
+	// Create the community schedule
+	for _, csName := range csCreateSet {
+		cs := NewCommunitySchedule(namespace, csName, cc)
+		_, err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(cs.Namespace).Create(context.TODO(), cs, metav1.CreateOptions{})
 		if err != nil {
-			klog.Info(err)
-			return err
+			klog.Error(err)
 		}
-		klog.Infof("community schedule %s/%s has been deleted", inconsistentCs.Namespace, inconsistentCs.Name)
+		klog.Infof("new community schedule %s/%s has been created", namespace, csName)
+	}
+	// Delete the community schedule
+	for _, csName := range csDeleteSet {
+		err = c.edgeAutoscalerClientSet.EdgeautoscalerV1alpha1().CommunitySchedules(namespace).Delete(context.TODO(), csName, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Error(err)
+		}
+		klog.Infof("community schedule %s/%s has been deleted", namespace, csName)
 	}
 
+	// Check if there's any Community Deployment resource which should be deleted or created
 	selector := labels.SelectorFromSet(map[string]string{
 		ealabels.CommunityControllerDeploymentLabel: "",
 	})
@@ -250,33 +247,28 @@ func (c *SystemController) syncCommunitySchedules(key string) error {
 			return err
 		}
 	}
-
-	dpsMap := make(map[string]*appsv1.Deployment, len(dps))
+	actualDps := make([]string, 0)
 	for _, dp := range dps {
-		key := fmt.Sprintf("%s/%s", dp.Namespace, dp.Name)
-		dpsMap[key] = dp
+		actualDps = append(actualDps, dp.Name)
 	}
+	dpCreateSet, dpDeleteSet := diff(cc.Status.Communities, actualDps)
 
-	for _, community := range cc.Status.Communities {
-		if _, ok := dpsMap[community]; !ok {
-			dp := NewCommunityController(namespace, community, cc)
-			_, err = c.kubernetesClientset.AppsV1().Deployments(dp.Namespace).Create(context.TODO(), dp, metav1.CreateOptions{})
-			if err != nil {
-				klog.Error(err)
-				return err
-			}
-			klog.Infof("new community controller %s has been created", key)
-		} else {
-			delete(dpsMap, key)
-		}
-	}
-	for _, inconsistentDp := range dpsMap {
-		err = c.kubernetesClientset.AppsV1().Deployments(inconsistentDp.Namespace).Delete(context.TODO(), inconsistentDp.Name, metav1.DeleteOptions{})
+	// Create the community controllers
+	for _, dpName := range dpCreateSet {
+		dp := NewCommunityController(namespace, dpName, cc)
+		_, err = c.kubernetesClientset.AppsV1().Deployments(dp.Namespace).Create(context.TODO(), dp, metav1.CreateOptions{})
 		if err != nil {
-			klog.Info(err)
-			return err
+			klog.Error(err)
 		}
-		klog.Infof("community controller %s/%s has been deleted", inconsistentDp.Namespace, inconsistentDp.Name)
+		klog.Infof("new community schedule %s/%s has been created", namespace, dpName)
+	}
+	// Delete the community schedule
+	for _, dpName := range dpDeleteSet {
+		err = c.kubernetesClientset.AppsV1().Deployments(namespace).Delete(context.TODO(), dpName, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Error(err)
+		}
+		klog.Infof("community schedule %s/%s has been deleted", namespace, dpName)
 	}
 
 	return nil
@@ -365,4 +357,35 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 			},
 		},
 	}
+}
+
+func diff(expected, actual []string) (createSet, deleteSet []string) {
+
+	expectedMap := make(map[string]bool, 0)
+	actualMap := make(map[string]bool, 0)
+
+	deleteSet = make([]string, 0)
+	createSet = make([]string, 0)
+
+	for _, e := range expected {
+		expectedMap[e] = true
+	}
+	for _, a := range actual {
+		actualMap[a] = true
+	}
+
+	for _, e := range expected {
+		if _, ok := actualMap[e]; !ok {
+			createSet = append(createSet, e)
+		}
+	}
+
+	for _, a := range actual {
+		if _, ok := expectedMap[a]; !ok {
+			deleteSet = append(deleteSet, a)
+		}
+	}
+
+	return
+
 }

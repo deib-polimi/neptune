@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -215,6 +214,7 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 				ealabels.FunctionNameLabel:                                   function.Name,
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
 				ealabels.NodeLabel:                                           node,
+				"autoscaling": "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(function, schema.GroupVersionKind{
@@ -233,12 +233,49 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(8080), Protocol: corev1.ProtocolTCP},
 					},
-					//ImagePullPolicy: corev1.PullPolicy(factory.Factory.Config.ImagePullPolicy),
+					ImagePullPolicy: corev1.PullAlways,
 					Env:       envVars,
 					Resources: *resources,
 					// TODO: add probe with Function Factory
 					//LivenessProbe:   probes.Liveness,
 					//ReadinessProbe:  probes.Readiness,
+
+				},
+				{
+					Name:  "http-metrics",
+					Image: "systemautoscaler/http-metrics:0.1.0",
+					Ports: []corev1.ContainerPort{
+						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
+					},
+					ImagePullPolicy: corev1.PullAlways,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ADDRESS",
+							Value: "localhost",
+						},
+						{
+							Name:  "PORT",
+							Value: "8080",
+						},
+						{
+							Name:  "WINDOW_SIZE",
+							Value: "30s",
+						},
+						{
+							Name:  "WINDOW_GRANULARITY",
+							Value: "1ms",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU: *resource.NewMilliQuantity(150, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(250000000, resource.BinarySI),
+						},
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU: *resource.NewMilliQuantity(150, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(250000000, resource.BinarySI),
+						},
+					},
 				},
 			},
 		},
@@ -307,6 +344,12 @@ func makeResources(function *openfaasv1.Function) (*corev1.ResourceRequirements,
 		}
 		resources.Requests[corev1.ResourceCPU] = qty
 	}
+
+	resources.Requests[corev1.ResourceCPU] = *resource.NewMilliQuantity(1000, resource.BinarySI)
+	resources.Limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(1000, resource.BinarySI)
+
+	resources.Requests[corev1.ResourceMemory] = *resource.NewQuantity(500000000, resource.BinarySI)
+	resources.Limits[corev1.ResourceMemory] = *resource.NewQuantity(500000000, resource.BinarySI)
 
 	return resources, nil
 }
