@@ -1,0 +1,14 @@
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: catalogue
+  namespace: openfaas-fn
+spec:
+  name: catalogue
+  image: systemautoscaler/catalogue:dev
+  limits:
+    cpu: "1000m"
+    memory: "1024Mi"
+  requests:
+    cpu: "1000m"
+    memory: "1024Mi"
