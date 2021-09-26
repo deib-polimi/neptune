@@ -3,8 +3,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: orders
-  annotations:
-        prometheus.io/scrape: 'true'
   labels:
     name: orders
   namespace: openfaas-fn
