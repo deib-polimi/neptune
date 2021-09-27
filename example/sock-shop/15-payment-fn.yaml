@@ -1,0 +1,16 @@
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: payment
+  namespace: openfaas-fn
+spec:
+  name: payment
+  image: systemautoscaler/payment:dev
+  environment:
+    JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false -Dserver.port=8080"
+  limits:
+    cpu: "1000m"
+    memory: "1024Mi"
+  requests:
+    cpu: "1000m"
+    memory: "1024Mi"
