@@ -112,6 +112,11 @@ func NewController(
 		DeleteFunc: controller.handleNode,
 		UpdateFunc: controller.handleNodeUpdate,
 	})
+	informers.Function.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleFunction,
+		DeleteFunc: controller.handleFunction,
+		UpdateFunc: controller.handleFunctionUpdate,
+	})
 
 	return controller
 }
