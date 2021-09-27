@@ -19,6 +19,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	HttpMetricsPort = 8080
+	HttpMetricsCpu  = 150
+	HttpMetricsMemory = 250000000
+)
+
 func (c *CommunityController) runScheduler(_ string) error {
 
 	klog.Infof("Rescheduling community %s/%s", c.communityNamespace, c.communityName)
@@ -231,7 +237,7 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					Name:  function.Spec.Name,
 					Image: function.Spec.Image,
 					Ports: []corev1.ContainerPort{
-						{ContainerPort: int32(8080), Protocol: corev1.ProtocolTCP},
+						{ContainerPort: int32(HttpMetricsPort), Protocol: corev1.ProtocolTCP},
 					},
 					ImagePullPolicy: corev1.PullAlways,
 					Env:       envVars,
@@ -239,7 +245,6 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					// TODO: add probe with Function Factory
 					//LivenessProbe:   probes.Liveness,
 					//ReadinessProbe:  probes.Readiness,
-
 				},
 				{
 					Name:  "http-metrics",
@@ -268,12 +273,12 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					},
 					Resources: corev1.ResourceRequirements{
 						Limits: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceCPU: *resource.NewMilliQuantity(150, resource.BinarySI),
-							corev1.ResourceMemory: *resource.NewQuantity(250000000, resource.BinarySI),
+							corev1.ResourceCPU: *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceCPU: *resource.NewMilliQuantity(150, resource.BinarySI),
-							corev1.ResourceMemory: *resource.NewQuantity(250000000, resource.BinarySI),
+							corev1.ResourceCPU: *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 					},
 				},
@@ -314,42 +319,44 @@ func makeResources(function *openfaasv1.Function) (*corev1.ResourceRequirements,
 	}
 
 	// Set Memory limits
-	if function.Spec.Limits != nil && len(function.Spec.Limits.Memory) > 0 {
-		qty, err := resource.ParseQuantity(function.Spec.Limits.Memory)
+	if function.Spec.Limits != nil && len(function.Spec.Limits.Memory) > 0 &&
+		function.Spec.Requests != nil && len(function.Spec.Requests.Memory) > 0 {
+		limit, err := resource.ParseQuantity(function.Spec.Limits.Memory)
 		if err != nil {
 			return resources, err
 		}
-		resources.Limits[corev1.ResourceMemory] = qty
-	}
-	if function.Spec.Requests != nil && len(function.Spec.Requests.Memory) > 0 {
-		qty, err := resource.ParseQuantity(function.Spec.Requests.Memory)
+		request, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
 			return resources, err
 		}
-		resources.Requests[corev1.ResourceMemory] = qty
+		if limit.MilliValue() != request.MilliValue() {
+			return resources, fmt.Errorf("function %s/%s must have same memory resource requests and limits", function.Namespace, function.Name)
+		}
+		resources.Requests[corev1.ResourceMemory] = request
+		resources.Limits[corev1.ResourceMemory] = limit
+	} else {
+		return resources, fmt.Errorf("function %s/%s must have memory resource requests and limits", function.Namespace, function.Name)
 	}
 
 	// Set CPU limits
-	if function.Spec.Limits != nil && len(function.Spec.Limits.CPU) > 0 {
-		qty, err := resource.ParseQuantity(function.Spec.Limits.CPU)
+	if function.Spec.Limits != nil && len(function.Spec.Limits.CPU) > 0 &&
+		function.Spec.Requests != nil && len(function.Spec.Requests.CPU) > 0 {
+		limit, err := resource.ParseQuantity(function.Spec.Limits.CPU)
 		if err != nil {
 			return resources, err
 		}
-		resources.Limits[corev1.ResourceCPU] = qty
-	}
-	if function.Spec.Requests != nil && len(function.Spec.Requests.CPU) > 0 {
-		qty, err := resource.ParseQuantity(function.Spec.Requests.CPU)
+		request, err := resource.ParseQuantity(function.Spec.Requests.CPU)
 		if err != nil {
 			return resources, err
 		}
-		resources.Requests[corev1.ResourceCPU] = qty
+		if limit.MilliValue() != request.MilliValue() {
+			return resources, fmt.Errorf("function %s/%s must have same cpu resource requests and limits", function.Namespace, function.Name)
+		}
+		resources.Requests[corev1.ResourceCPU] = request
+		resources.Limits[corev1.ResourceCPU] = limit
+	} else {
+		return resources, fmt.Errorf("function %s/%s must have cpu resource requests and limits", function.Namespace, function.Name)
 	}
-
-	resources.Requests[corev1.ResourceCPU] = *resource.NewMilliQuantity(1000, resource.BinarySI)
-	resources.Limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(1000, resource.BinarySI)
-
-	resources.Requests[corev1.ResourceMemory] = *resource.NewQuantity(500000000, resource.BinarySI)
-	resources.Limits[corev1.ResourceMemory] = *resource.NewQuantity(500000000, resource.BinarySI)
 
 	return resources, nil
 }
