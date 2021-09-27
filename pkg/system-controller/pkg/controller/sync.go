@@ -360,15 +360,11 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 
 func diff(expected, actual []string) (createSet, deleteSet []string) {
 
-	//expectedMap := make(map[string]bool, 0)
 	actualMap := make(map[string]bool, 0)
 
 	deleteSet = make([]string, 0)
 	createSet = make([]string, 0)
 
-	//for _, e := range expected {
-	//	expectedMap[e] = true
-	//}
 	for _, a := range actual {
 		actualMap[a] = true
 	}
@@ -384,12 +380,6 @@ func diff(expected, actual []string) (createSet, deleteSet []string) {
 	for e, _ := range actualMap {
 		deleteSet = append(deleteSet, e)
 	}
-
-	//for _, a := range actual {
-	//	if _, ok := expectedMap[a]; !ok {
-	//		deleteSet = append(deleteSet, a)
-	//	}
-	//}
 
 	return
 
