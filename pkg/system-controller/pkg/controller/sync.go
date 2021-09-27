@@ -337,7 +337,7 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: map[string]string{
-						"kubernetes.io/hostname": "master",
+						"kubernetes.io/hostname": "k3s-master",
 					},
 					Containers: []corev1.Container{
 						{
