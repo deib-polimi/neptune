@@ -14,15 +14,17 @@ require (
 	github.com/onsi/gomega v1.14.0
 	github.com/openfaas/faas-netes v0.0.0-20210722152123-f0519195a78b
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602 // indirect
+	golang.org/x/tools v0.1.5 // indirect
 	k8s.io/api v0.21.3
+	k8s.io/apiextensions-apiserver v0.21.3 // indirect
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
-	k8s.io/code-generator v0.22.2
+	k8s.io/code-generator v0.21.3
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-openapi v0.0.0-20210527164424-3c818078ee3d
 	k8s.io/metrics v0.21.3
 	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
 	sigs.k8s.io/controller-runtime v0.9.3
-	sigs.k8s.io/controller-tools v0.6.2 // indirect
 
 )

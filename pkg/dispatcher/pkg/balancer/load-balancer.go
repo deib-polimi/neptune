@@ -111,8 +111,10 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		requestData.StatusCode = res.StatusCode
 	}
 
+
 	if resErr != nil {
-		http.Error(w, "Bad gateway", http.StatusBadGateway)
+		klog.Errorf("Bad gateway, error: %v", resErr.Error())
+		http.Error(w, fmt.Sprintf("Bad gateway, error: %v", resErr.Error()), http.StatusBadGateway)
 		return
 	}
 

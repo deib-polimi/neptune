@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
@@ -129,6 +130,64 @@ func TestFilterReadyNodes(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 			actual, err := filterReadyNodes(tt.input)
 			tt.verifyFunc(tt.desired, actual, err)
+		})
+	}
+}
+
+func TestDiff(t *testing.T) {
+	testcases := []struct {
+		description string
+		expected    []string
+		actual      []string
+		delete      []string
+		create      []string
+	}{
+		{
+			description: "create from empty",
+			expected:    []string{"a", "b", "c"},
+			actual:      []string{},
+			delete:      []string{},
+			create:      []string{"a", "b", "c"},
+		},
+		{
+			description: "delete to empty",
+			expected:    []string{},
+			actual:      []string{"a", "b", "c"},
+			delete:      []string{"a", "b", "c"},
+			create:      []string{},
+		},
+		{
+			description: "create some",
+			expected:    []string{"a", "b", "c", "d"},
+			actual:      []string{"a", "b", "c"},
+			delete:      []string{},
+			create:      []string{"d"},
+		},
+		{
+			description: "delete some",
+			expected:    []string{"a", "b", "c"},
+			actual:      []string{"a", "b", "c", "d"},
+			delete:      []string{"d"},
+			create:      []string{},
+		},
+		{
+			description: "create and delete some",
+			expected:    []string{"a", "b", "c", "e"},
+			actual:      []string{"a", "b", "c", "d"},
+			delete:      []string{"d"},
+			create:      []string{"e"},
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.description, func(t *testing.T) {
+			createSet, deleteSet := diff(tt.expected, tt.actual)
+			for _, e := range createSet {
+				assert.Contains(t, tt.create, e)
+			}
+			for _, e := range deleteSet {
+				assert.Contains(t, tt.delete, e)
+			}
 		})
 	}
 }
