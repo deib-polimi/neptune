@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	rand "math/rand"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
@@ -14,7 +16,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	rand "math/rand"
 )
 
 const (

@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 
 	"k8s.io/apimachinery/pkg/api/resource"
