@@ -4,6 +4,10 @@ metadata:
   name: front-end
   namespace: openfaas-fn
 spec:
+  labels:
+    com.openfaas.scale.max: "0"
+    com.openfaas.scale.min: "0"
+    com.openfaas.scale.zero: "true"
   name: front-end
   image: systemautoscaler/front-end:dev
   environment:

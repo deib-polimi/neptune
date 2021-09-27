@@ -4,6 +4,10 @@ metadata:
   name: queue-master
   namespace: openfaas-fn
 spec:
+  labels:
+    com.openfaas.scale.max: "0"
+    com.openfaas.scale.min: "0"
+    com.openfaas.scale.zero: "true"
   name: queue-master
   image: weaveworksdemos/queue-master:0.3.1
   environment:

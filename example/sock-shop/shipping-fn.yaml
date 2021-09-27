@@ -4,6 +4,10 @@ metadata:
   name: shipping
   namespace: openfaas-fn
 spec:
+  labels:
+    com.openfaas.scale.max: "0"
+    com.openfaas.scale.min: "0"
+    com.openfaas.scale.zero: "true"
   name: shipping
   image: weaveworksdemos/shipping:0.4.8
   environment:

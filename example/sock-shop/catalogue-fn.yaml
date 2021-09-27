@@ -4,6 +4,10 @@ metadata:
   name: catalogue
   namespace: openfaas-fn
 spec:
+  labels:
+    com.openfaas.scale.max: "0"
+    com.openfaas.scale.min: "0"
+    com.openfaas.scale.zero: "true"
   name: catalogue
   image: systemautoscaler/catalogue:dev
   limits:
