@@ -1,16 +1,16 @@
 apiVersion: openfaas.com/v1
 kind: Function
 metadata:
-  name: user
+  name: carts
   namespace: openfaas-fn
 spec:
-  name: user
-  image: systemautoscaler/user:dev
+  name: carts
+  image: weaveworksdemos/carts:0.4.8
   environment:
     JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false -Dserver.port=8080"
   limits:
-    cpu: "1000m"
+    cpu: "300m"
     memory: "1024Mi"
   requests:
-    cpu: "1000m"
+    cpu: "300m"
     memory: "1024Mi"

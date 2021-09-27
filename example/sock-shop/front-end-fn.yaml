@@ -9,8 +9,8 @@ spec:
   environment:
     SESSION_REDIS: "true"
   limits:
-    cpu: "1000m"
+    cpu: "100m"
     memory: "1024Mi"
   requests:
-    cpu: "1000m"
+    cpu: "100m"
     memory: "1024Mi"
