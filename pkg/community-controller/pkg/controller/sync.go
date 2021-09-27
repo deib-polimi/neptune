@@ -21,8 +21,8 @@ import (
 
 const (
 	HttpMetricsPort = 8080
-	HttpMetricsCpu  = 150
-	HttpMetricsMemory = 250000000
+	HttpMetricsCpu  = 100
+	HttpMetricsMemory = 200000000
 )
 
 func (c *CommunityController) runScheduler(_ string) error {

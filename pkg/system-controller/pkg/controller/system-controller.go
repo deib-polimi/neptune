@@ -155,7 +155,6 @@ func (c *SystemController) runSyncSchedulesWorker() {
 	}
 }
 
-
 // control loop to handle performance degradation inside communities
 func (c *SystemController) runPerformanceDegradationObserver() {
 }
