@@ -9,8 +9,8 @@ spec:
   environment:
     JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false -Dserver.port=8080"
   limits:
-    cpu: "1000m"
+    cpu: "300m"
     memory: "1024Mi"
   requests:
-    cpu: "1000m"
+    cpu: "300m"
     memory: "1024Mi"

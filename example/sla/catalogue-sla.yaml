@@ -11,7 +11,7 @@ spec:
     memory: 1024Mi
   minResources:
     memory: 1024Mi
-    cpu: 100m
+    cpu: 50m
   maxResources:
     memory: 1024Mi
     cpu: 20000m

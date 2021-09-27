@@ -7,8 +7,8 @@ spec:
   name: catalogue
   image: systemautoscaler/catalogue:dev
   limits:
-    cpu: "1000m"
+    cpu: "50m"
     memory: "1024Mi"
   requests:
-    cpu: "1000m"
+    cpu: "50m"
     memory: "1024Mi"
