@@ -1,0 +1,22 @@
+apiVersion: systemautoscaler.polimi.it/v1beta1
+kind: ServiceLevelAgreement
+metadata:
+    name: catalogue
+    namespace: openfaas-fn
+spec:
+  metric:
+    responseTime: 100m
+  defaultResources:
+    cpu: "1000m"
+    memory: 1024Mi
+  minResources:
+    memory: 1024Mi
+    cpu: 100m
+  maxResources:
+    memory: 1024Mi
+    cpu: 20000m
+  service:
+    container: catalogue
+    selector:
+      matchLabels:
+        name: catalogue
