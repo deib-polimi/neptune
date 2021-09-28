@@ -3,6 +3,10 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"testing"
+
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"github.com/stretchr/testify/require"
@@ -10,9 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"net/http"
-	"strconv"
-	"testing"
 )
 
 func TestNewSchedulingInput(t *testing.T) {
