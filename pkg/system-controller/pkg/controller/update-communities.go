@@ -93,6 +93,8 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 				labels[ealabels.CommunityLabel.WithNamespace(namespace).String()] = community.Name
 			}
 
+			labels[ealabels.WorkerLabel] = ealabels.WorkerLabelValue
+
 			_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 			if err != nil {

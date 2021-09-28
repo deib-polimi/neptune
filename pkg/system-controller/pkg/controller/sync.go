@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,9 +25,9 @@ import (
 
 const (
 	// EmptyNodeListError is the default error message when grouping cluster nodes
-	EmptyNodeListError string = "there are no or too few ready nodes for building communities"
-	ComControllerCpu = 200
-	ComControllerMemory = 200000000
+	EmptyNodeListError  string = "there are no or too few ready nodes for building communities"
+	ComControllerCpu           = 200
+	ComControllerMemory        = 200000000
 )
 
 // TODO: better error handling
@@ -356,11 +357,11 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceCPU: *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
+									corev1.ResourceCPU:    *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
 									corev1.ResourceMemory: *resource.NewQuantity(ComControllerMemory, resource.BinarySI),
 								},
 								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceCPU: *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
+									corev1.ResourceCPU:    *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
 									corev1.ResourceMemory: *resource.NewQuantity(ComControllerMemory, resource.BinarySI),
 								},
 							},
