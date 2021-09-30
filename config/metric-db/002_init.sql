@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS resource
   function VARCHAR(50),
   namespace VARCHAR(50),
   cores BIGINT,
-  comnunity VARCHAR(50),
+  community VARCHAR(50),
   PRIMARY KEY (timestamp, namespace, function, node)
 );
 
