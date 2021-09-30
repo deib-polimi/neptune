@@ -166,7 +166,7 @@ func (c *SystemController) getNodeDelays(nodes []*corev1.Node) ([][]int64, error
 		nodeNames[i] = node.Name
 	}
 
-	delays, err := getter.GetNodeDelays(nodeNames)
+	delays, err := getter.GetNodeDelays(c.delayClient, nodeNames)
 
 	return delays, err
 }

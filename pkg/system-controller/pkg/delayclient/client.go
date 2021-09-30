@@ -17,20 +17,24 @@ const (
 	DelayQuery = "SELECT f as fromNode,t as toNode,l as latency FROM (SELECT from_node, to_node FROM ping GROUP BY from_node, to_node) as p1 INNER JOIN LATERAL (SELECT from_node as f, to_node as t, avg_latency as l FROM ping p2 WHERE p1.from_node = p2.from_node AND p1.to_node = p2.to_node ORDER BY timestamp DESC LIMIT 1) AS data ON true"
 )
 
-type DelayClient struct {
+type DelayClient interface {
+	GetDelays() ([]*NodeDelay, error)
+}
+
+type SQLDelayClient struct {
 	pool *pgxpool.Pool
 	opts db.Options
 }
 
 // NewDelayClient creates a new DelayClient.
-func NewDelayClient(opts db.Options) *DelayClient {
-	return &DelayClient{
+func NewSQLDelayClient(opts db.Options) SQLDelayClient {
+	return SQLDelayClient{
 		opts: opts,
 	}
 }
 
 // SetupDBConnection creates a new connection to the database using the provided options.
-func (c *DelayClient) SetupDBConnection() error {
+func (c SQLDelayClient) SetupDBConnection() error {
 	var config *pgxpool.Config
 	var err error
 
@@ -50,11 +54,11 @@ func (c *DelayClient) SetupDBConnection() error {
 }
 
 // Stop closes the connection to the database.
-func (c *DelayClient) Stop() {
+func (c SQLDelayClient) Stop() {
 	c.pool.Close()
 }
 
-func (c *DelayClient) GetDelays() ([]*NodeDelay, error) {
+func (c SQLDelayClient) GetDelays() ([]*NodeDelay, error) {
 	rows, err := c.pool.Query(context.TODO(), DelayQuery)
 	if err != nil {
 		klog.Error(err)

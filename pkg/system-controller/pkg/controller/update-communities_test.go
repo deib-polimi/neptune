@@ -18,6 +18,7 @@ var resultObjectMeta = v1.ObjectMeta{
 	Name: "node-1",
 	Labels: map[string]string{
 		ealabels.CommunityLabel.WithNamespace("").String(): "community-1",
+		ealabels.WorkerLabel: ealabels.WorkerLabelValue,
 	},
 }
 
@@ -25,6 +26,7 @@ var notInCommunityMeta = v1.ObjectMeta{
 	Name: "node-4",
 	Labels: map[string]string{
 		ealabels.CommunityLabel.WithNamespace("").String(): "community-2",
+		ealabels.WorkerLabel: ealabels.WorkerLabelValue,
 	},
 }
 
@@ -64,6 +66,7 @@ func listNodeWithDifferentLabel(selector labels.Selector) (ret []*corev1.Node, e
 				Name: "node-1",
 				Labels: map[string]string{
 					ealabels.CommunityLabel.WithNamespace("").String(): "community-2",
+					ealabels.WorkerLabel: ealabels.WorkerLabelValue,
 				},
 			},
 		},

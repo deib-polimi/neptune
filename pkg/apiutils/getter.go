@@ -2,7 +2,6 @@ package apiutils
 
 import (
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
@@ -66,25 +65,18 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 	return r.pods(function.Namespace).List(selector)
 }
 
-func (r *ResourceGetter) GetNodeDelays(nodes []string) ([][]int64, error) {
+func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient,nodes []string) ([][]int64, error) {
 	nodeMapping := make(map[string]int, len(nodes))
 	for i, node := range nodes {
 		nodeMapping[node] = i
 	}
 
 	delayMatrix := make([][]int64, len(nodes))
-	for i, _ := range delayMatrix {
+	for i := range delayMatrix {
 		delayMatrix[i] = make([]int64, len(nodes))
 	}
 
-	c := delayclient.NewDelayClient(db.NewDBOptions())
-	err := c.SetupDBConnection()
-	if err != nil {
-		klog.Error(err)
-		return nil, err
-	}
-
-	delays, err := c.GetDelays()
+	delays, err := client.GetDelays()
 	if err != nil {
 		klog.Error(err)
 		return nil, err

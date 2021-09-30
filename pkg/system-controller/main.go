@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	"time"
@@ -68,12 +70,19 @@ func main() {
 
 	communityGetter := slpaclient.NewClient()
 
+	delayClient := delayclient.NewSQLDelayClient(db.NewDBOptions())
+	err = delayClient.SetupDBConnection()
+	if err != nil {
+		klog.Fatal(err)
+	}
+
 	systemController := syscontroller.NewController(
 		kubernetesClient,
 		eaclient,
 		informers,
 		communityUpdater,
 		communityGetter,
+		delayClient,
 	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
