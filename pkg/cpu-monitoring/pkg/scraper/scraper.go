@@ -14,27 +14,32 @@ import (
 	mp "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 type Scraper interface {
 	// start scraping CPU usage of pods running on the node
-	Start(node string)
+	Start(node string, stopCh <-chan struct{}, hasSynced func() bool)
 	Stop()
 }
 
 type scraper struct {
 	pods         apiutils.PodGetter
 	cadvisor     *cadvisorclient.Client
-	persistor    *persistor.ResourcePersistor
+	persistor    persistor.Persistor
 	resourceChan chan metrics.RawResourceData
+	node         string
 }
 
 func New(pods func(namespace string) corelisters.PodNamespaceLister) (*scraper, error) {
 	podGetter, err := apiutils.NewPodGetter(pods)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create podGetter: %v", err)
+		return nil, fmt.Errorf("failed to create pod getter: %v", err)
 	}
 
 	client, err := cadvisorclient.NewClient("")
@@ -46,6 +51,12 @@ func New(pods func(namespace string) corelisters.PodNamespaceLister) (*scraper, 
 	resourceChan := make(chan metrics.RawResourceData, 100)
 	persistor := persistor.NewResourcePersistor(mp.NewDBOptions(), resourceChan)
 
+	err = persistor.SetupDBConnection()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to the database: %v", err)
+	}
+
 	return &scraper{
 		pods:         podGetter,
 		cadvisor:     client,
@@ -54,11 +65,33 @@ func New(pods func(namespace string) corelisters.PodNamespaceLister) (*scraper, 
 	}, nil
 }
 
-func (s *scraper) Start(node string) {
-	pods, err := s.pods.GetPodsOfAllFunctionInNode(corev1.NamespaceAll, node)
+func (s *scraper) Start(stopCh <-chan struct{}, node string, hasSynced func() bool) error {
+	s.node = node
+
+	if ok := cache.WaitForCacheSync(
+		stopCh,
+		hasSynced,
+	); !ok {
+		return fmt.Errorf("failed to wait for caches to sync")
+	}
+
+	s.persistor.Persist()
+
+	// TODO tune the frequency
+	go wait.Until(s.scrape, 5*time.Second, stopCh)
+
+	return nil
+}
+
+func (s *scraper) Stop() {
+	s.persistor.Stop()
+}
+
+func (s *scraper) scrape() {
+	pods, err := s.pods.GetPodsOfAllFunctionInNode(corev1.NamespaceAll, s.node)
 
 	if err != nil {
-		//TODO
+		utilruntime.HandleError(fmt.Errorf("failed to retrieve pods in node %v: %v", s.node, err))
 		return
 	}
 
@@ -74,7 +107,7 @@ func (s *scraper) Start(node string) {
 				continue
 			}
 
-			cpu, err := s.scrape(c.Name)
+			cpu, err := s.containerCPU(c.Name)
 
 			if err != nil {
 				//TODO
@@ -88,7 +121,7 @@ func (s *scraper) Start(node string) {
 		// save to metrics database
 		s.resourceChan <- metrics.RawResourceData{
 			Timestamp: time.Now(),
-			Node:      node,
+			Node:      s.node,
 			Function:  p.Labels[ealabels.FunctionNameLabel],
 			Namespace: namespace,
 			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()],
@@ -97,21 +130,27 @@ func (s *scraper) Start(node string) {
 	}
 }
 
-func (s *scraper) Stop() {}
-
-func (s *scraper) scrape(container string) (uint64, error) {
-
+func (s scraper) containerCPU(container string) (uint64, error) {
 	// TODO: make an average over the last x seconds.
 	// use start and end fields
 	info := &cadvisorv1.ContainerInfoRequest{
-		NumStats: 1,
+		Start: time.Now().Add(-5 * time.Second),
+		End:   time.Now(),
 	}
 
 	cInfo, err := s.cadvisor.ContainerInfo(container, info)
+
+	var avgCPU uint64
+
+	for _, stat := range cInfo.Stats {
+		avgCPU += stat.Cpu.Usage.Total
+	}
+
+	avgCPU = avgCPU / uint64(len(cInfo.Stats))
 
 	if err != nil {
 		return 0, fmt.Errorf("failed to retrieve metrics for container %s: %v", container, err)
 	}
 
-	return cInfo.Stats[0].Cpu.Usage.Total, nil
+	return avgCPU, nil
 }

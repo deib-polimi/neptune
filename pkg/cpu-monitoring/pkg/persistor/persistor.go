@@ -28,6 +28,15 @@ const (
 	table             = "metric"
 )
 
+type Persistor interface {
+	// Save incoming data in a database.
+	Persist()
+	// SetupDBConnection creates a new connection to the database using the provided options.
+	SetupDBConnection() error
+	// Stop closes the connection to the database.
+	Stop()
+}
+
 // ResourcePersistor receives metrics from the load balancer and persists them to a backend.
 // The initial implementation is a simple client that connects to a TimescaleDB backend.
 type ResourcePersistor struct {
@@ -38,7 +47,7 @@ type ResourcePersistor struct {
 }
 
 // NewResourcePersistor creates a new ResourcePersistor.
-func NewResourcePersistor(opts mp.Options, rawResourceChan <-chan metrics.RawResourceData) *ResourcePersistor {
+func NewResourcePersistor(opts mp.Options, rawResourceChan <-chan metrics.RawResourceData) Persistor {
 	return &ResourcePersistor{
 		opts:         opts,
 		resourceChan: rawResourceChan,
@@ -71,9 +80,9 @@ func (p *ResourcePersistor) Stop() {
 	p.pool.Close()
 }
 
-// PollMetrics receives metrics from the load balancer and persists them to a backend until the chan is closed.
+// Persist receives metrics from the cpu scraper and persists them into a database until the chan is closed.
 // It spawns the first polling goroutine which always listen for new data.
-func (p *ResourcePersistor) PollMetrics() {
+func (p *ResourcePersistor) Persist() {
 	var cancel context.CancelFunc
 
 	// use context to terminate all routines
@@ -88,8 +97,8 @@ func (p *ResourcePersistor) PollMetrics() {
 
 }
 
-// batchData receives metrics from the load balancer and persists them to a backend.
-// It spawns new goroutines if the metrics arrival rate cannot be handled buy a single routine.
+// Many goroutines are spawned to handle the incoming data if the existing ones are polling slowly.
+// A routine persists the data when a batch is full or when all data from the chan are polled.
 func (p *ResourcePersistor) batchData(terminate bool) {
 	var batch []metrics.RawResourceData
 	var err error
@@ -129,7 +138,6 @@ func (p *ResourcePersistor) batchData(terminate bool) {
 	}
 }
 
-// Save insert a new metric into the database.
 func (p *ResourcePersistor) save(batch []metrics.RawResourceData) error {
 
 	klog.Info("persisting:")

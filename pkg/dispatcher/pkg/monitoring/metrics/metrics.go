@@ -38,6 +38,26 @@ func (r RawResponseTime) AsCopy() []interface{} {
 	}
 }
 
+type RawResourceData struct {
+	Timestamp time.Time
+	Node      string
+	Function  string
+	Namespace string
+	Community string
+	Cores     int
+}
+
+func (r RawResourceData) AsCopy() []interface{} {
+	return []interface{}{
+		r.Timestamp,
+		r.Node,
+		r.Function,
+		r.Namespace,
+		r.Community,
+		r.Cores,
+	}
+}
+
 // ExposedMetrics is a struct that wraps the exposed metrics
 type ExposedMetrics struct {
 	ResponseTime float64 `json:"response-time"`
