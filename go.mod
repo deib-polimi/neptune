@@ -5,9 +5,11 @@ go 1.16
 require (
 	github.com/JohnCGriffin/yogofn v0.0.0-20170613212352-43d7b79df9f1
 	github.com/asecurityteam/rolling v2.0.4+incompatible
+	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/emirpasic/gods v1.12.0
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jmcvetta/randutil v0.0.0-20150817122601-2bb1b664bcff
+	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210723154917-1e5c782a6217
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/onsi/ginkgo v1.16.4

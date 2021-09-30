@@ -3,6 +3,7 @@ package controller
 import (
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -39,6 +40,17 @@ func (c *CommunityController) handlePodUpdate(old, new interface{}) {
 	c.processPod(new)
 }
 
+// Function handlers
+// Whenever function are created or deleted, check if the community schedules allocations are still consistent
+func (c *CommunityController) handleFunction(new interface{}) {
+	c.processFunction(new)
+}
+
+func (c *CommunityController) handleFunctionUpdate(old, new interface{}) {
+	c.processFunction(old)
+	c.processFunction(new)
+}
+
 func (c *CommunityController) belongs(pod *corev1.Pod) bool {
 	community, ok := pod.Labels[ealabels.CommunityLabel.WithNamespace(c.communityNamespace).String()]
 	return ok && community == c.communityName
@@ -64,6 +76,15 @@ func (c *CommunityController) processNode(nodeObject interface{}) {
 			if nodeCommunity == c.communityName {
 				_ = c.runScheduler("")
 			}
+		}
+	}
+}
+
+// check if a function belongs to the community namespace and triggers the scheduling process to place its pod
+func (c *CommunityController) processFunction(functionObject interface{}) {
+	if function, ok := functionObject.(*openfaasv1.Function); ok {
+		if c.communityNamespace == function.Namespace {
+			_ = c.runScheduler("")
 		}
 	}
 }

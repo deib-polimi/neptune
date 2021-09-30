@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"time"
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
@@ -46,6 +47,9 @@ type SystemController struct {
 	// communityUpdater applies the output of SLPA to Kubernets Nodes
 	communityUpdater *CommunityUpdater
 
+	// delayClient retrieves the delay matrix
+	delayClient delayclient.DelayClient
+
 	listers informers.Listers
 
 	nodeSynced                    cache.InformerSynced
@@ -72,6 +76,7 @@ func NewController(
 	informers informers.Informers,
 	communityUpdater *CommunityUpdater,
 	communityGetter slpaClient.ClientCommunityGetter,
+	delayClient delayclient.DelayClient,
 ) *SystemController {
 
 	// Create event broadcaster
@@ -85,18 +90,19 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &SystemController{
-		edgeAutoscalerClientSet:         eaClientSet,
-		kubernetesClientset:             kubernetesClientset,
-		communityUpdater:                communityUpdater,
-		communityGetter:                 communityGetter,
-		recorder:                        recorder,
-		listers:                         informers.GetListers(),
-		deploymentSynced:                informers.Deployment.Informer().HasSynced,
-		communityScheduleSynced:         informers.CommunitySchedule.Informer().HasSynced,
-		nodeSynced:                      informers.Node.Informer().HasSynced,
-		communityConfigurationsSynced:   informers.CommunityConfiguration.Informer().HasSynced,
-		syncConfigurationsWorkqueue:     queue.NewQueue("CommunityConfigurationsQueue"),
-		syncSchedulesWorkqueue:          queue.NewQueue("CommunityScheduleQueue"),
+		edgeAutoscalerClientSet:       eaClientSet,
+		kubernetesClientset:           kubernetesClientset,
+		communityUpdater:              communityUpdater,
+		communityGetter:               communityGetter,
+		delayClient:                   delayClient,
+		recorder:                      recorder,
+		listers:                       informers.GetListers(),
+		deploymentSynced:              informers.Deployment.Informer().HasSynced,
+		communityScheduleSynced:       informers.CommunitySchedule.Informer().HasSynced,
+		nodeSynced:                    informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
+		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue"),
+		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue"),
 	}
 
 	klog.Info("Setting up event handlers")
@@ -154,7 +160,6 @@ func (c *SystemController) runSyncSchedulesWorker() {
 	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
 	}
 }
-
 
 // control loop to handle performance degradation inside communities
 func (c *SystemController) runPerformanceDegradationObserver() {

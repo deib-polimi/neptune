@@ -2,6 +2,7 @@ package persistor
 
 import (
 	"context"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -36,12 +37,12 @@ const (
 type MetricsPersistor struct {
 	pool        *pgxpool.Pool
 	metrichChan <-chan metrics.RawResponseTime
-	opts        Options
+	opts        db.Options
 	ctx         context.Context
 }
 
 // NewMetricsPersistor creates a new MetricsPersistor.
-func NewMetricsPersistor(opts Options, rawMetricChan <-chan metrics.RawResponseTime) *MetricsPersistor {
+func NewMetricsPersistor(opts db.Options, rawMetricChan <-chan metrics.RawResponseTime) *MetricsPersistor {
 	return &MetricsPersistor{
 		opts:        opts,
 		metrichChan: rawMetricChan,
@@ -134,12 +135,6 @@ func (p *MetricsPersistor) batchData(terminate bool) {
 
 // Save insert a new metric into the database.
 func (p *MetricsPersistor) save(batch []metrics.RawResponseTime) error {
-
-	klog.Info("persisting:")
-
-	for _, e := range batch {
-		klog.Infof("%v\n", e)
-	}
 
 	_, err := p.pool.CopyFrom(context.TODO(), pgx.Identifier{table}, columns, pgx.CopyFromSlice(len(batch), func(i int) ([]interface{}, error) {
 		return batch[i].AsCopy(), nil

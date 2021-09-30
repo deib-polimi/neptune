@@ -35,6 +35,10 @@ const (
 	GpuMemoryLabel        string = "nvidia.com/gpu-memory"
 	GpuFunctionLabel      string = "nvidia.com/gpu-function"
 	FunctionMaxDelayLabel string = "edgeautoscaler.polimi.it/function-max-delay"
+
+	// WorkerLabel is used to mark nodes as workers
+	WorkerLabel      string = "edgeautoscaler.polimi.it/node"
+	WorkerLabelValue string = "worker"
 )
 
 func (c Community) WithNamespace(ns string) Community {

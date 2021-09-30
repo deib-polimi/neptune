@@ -3,6 +3,9 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +26,9 @@ import (
 
 const (
 	// EmptyNodeListError is the default error message when grouping cluster nodes
-	EmptyNodeListError string = "there are no or too few ready nodes for building communities"
+	EmptyNodeListError  string = "there are no or too few ready nodes for building communities"
+	ComControllerCpu           = 200
+	ComControllerMemory        = 200000000
 )
 
 // TODO: better error handling
@@ -153,27 +158,17 @@ func filterReadyNodes(nodes []*corev1.Node) (result []*corev1.Node, err error) {
 }
 
 // TODO: Up to this point the delay matrix is hard coded
-func (c *SystemController) getNodeDelays(nodes []*corev1.Node) (delays [][]int32, err error) {
-	delays = make([][]int32, len(nodes))
+func (c *SystemController) getNodeDelays(nodes []*corev1.Node) ([][]int64, error) {
+	getter := apiutils.NewResourceGetter(c.listers.Pods, c.listers.Functions, c.listers.NodeLister)
 
-	for i := range delays {
-		delays[i] = make([]int32, len(nodes))
+	nodeNames := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeNames[i] = node.Name
 	}
 
-	// TODO: refactor once delay discovery implemented
-	err = nil
-	for source := range nodes {
-		for destination := range nodes {
-			value := 2
+	delays, err := getter.GetNodeDelays(c.delayClient, nodeNames)
 
-			if source == destination {
-				value = 0
-			}
-			delays[source][destination] = int32(value)
-		}
-	}
-
-	return
+	return delays, err
 }
 
 func (c *SystemController) syncCommunitySchedules(key string) error {
@@ -333,6 +328,9 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 					},
 				},
 				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"kubernetes.io/hostname": "k3s-master",
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "controller",
@@ -346,6 +344,16 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 								{
 									Name:  "COMMUNITY_NAME",
 									Value: name,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceCPU:    *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
+									corev1.ResourceMemory: *resource.NewQuantity(ComControllerMemory, resource.BinarySI),
+								},
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceCPU:    *resource.NewMilliQuantity(ComControllerCpu, resource.BinarySI),
+									corev1.ResourceMemory: *resource.NewQuantity(ComControllerMemory, resource.BinarySI),
 								},
 							},
 						},

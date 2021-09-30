@@ -4,25 +4,23 @@ import (
 	"context"
 	"fmt"
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
-	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	rand "math/rand"
-
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
+	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	rand "math/rand"
 )
 
 const (
-	HttpMetricsPort = 8080
-	HttpMetricsCpu  = 150
-	HttpMetricsMemory = 250000000
+	HttpMetricsPort   = 8080
+	HttpMetricsCpu    = 100
+	HttpMetricsMemory = 150000000
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -45,7 +43,13 @@ func (c *CommunityController) runScheduler(_ string) error {
 		return fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
 
-	input, err := NewSchedulingInput(nodes, functions)
+	// Retrieve the pods
+	pods, err := c.listers.PodLister.List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to retrieve pods with error: %s", err)
+	}
+
+	input, err := NewSchedulingInput(nodes, functions, pods)
 
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
@@ -220,7 +224,7 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 				ealabels.FunctionNameLabel:                                   function.Name,
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
 				ealabels.NodeLabel:                                           node,
-				"autoscaling": "vertical",
+				"autoscaling":                                                "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(function, schema.GroupVersionKind{
@@ -240,8 +244,8 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 						{ContainerPort: int32(HttpMetricsPort), Protocol: corev1.ProtocolTCP},
 					},
 					ImagePullPolicy: corev1.PullAlways,
-					Env:       envVars,
-					Resources: *resources,
+					Env:             envVars,
+					Resources:       *resources,
 					// TODO: add probe with Function Factory
 					//LivenessProbe:   probes.Liveness,
 					//ReadinessProbe:  probes.Readiness,
@@ -273,11 +277,11 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					},
 					Resources: corev1.ResourceRequirements{
 						Limits: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceCPU: *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceCPU: *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 					},

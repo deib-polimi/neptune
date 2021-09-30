@@ -112,6 +112,11 @@ func NewController(
 		DeleteFunc: controller.handleNode,
 		UpdateFunc: controller.handleNodeUpdate,
 	})
+	informers.Function.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.handleFunction,
+		DeleteFunc: controller.handleFunction,
+		UpdateFunc: controller.handleFunctionUpdate,
+	})
 
 	return controller
 }
@@ -143,7 +148,7 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 
 	for i := 0; i < threadiness; i++ {
 		// TODO: Currently the scheduler reschedules pods every 30 seconds. It should be change to be triggered by event or as cron jobs
-		go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
+		go wait.Until(c.runPeriodicScheduleWorker, 300*time.Second, stopCh)
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
 

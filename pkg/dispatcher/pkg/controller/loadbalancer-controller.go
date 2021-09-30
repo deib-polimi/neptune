@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -139,7 +140,7 @@ func NewController(
 	// 	})
 
 	controller.resGetter = apiutils.NewResourceGetter(controller.listers.Pods, controller.listers.Functions, controller.listers.NodeLister)
-	controller.persistor = persistor.NewMetricsPersistor(persistor.NewDBOptions(), metricChan)
+	controller.persistor = persistor.NewMetricsPersistor(db.NewDBOptions(), metricChan)
 
 	klog.Info("Setting up event handlers")
 
