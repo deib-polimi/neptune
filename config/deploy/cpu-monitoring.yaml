@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cpu-monitoring
+  namespace: default
+  labels:
+    app: cpu-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: cpu-monitoring
+  template:
+    metadata:
+      labels:
+        app: cpu-monitoring
+    spec:
+      automountServiceAccountToken: true
+      nodeSelector:
+        kubernetes.io/kind: worker
+      serviceAccountName: cpu-monitoring
+      containers:
+        - name: cpu-monitoring
+          image: systemautoscaler/cpu-monitoring:dev
+          imagePullPolicy: Always
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
