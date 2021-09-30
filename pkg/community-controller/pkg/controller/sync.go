@@ -19,9 +19,11 @@ import (
 )
 
 const (
-	HttpMetricsPort   = 8080
-	HttpMetricsCpu    = 100
-	HttpMetricsMemory = 150000000
+	HttpMetricsImage   = "systemautoscaler/http-metrics"
+	HttpMetricsVersion = "0.1.0"
+	HttpMetricsPort    = 8080
+	HttpMetricsCpu     = 100
+	HttpMetricsMemory  = 200000000
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -253,7 +255,7 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 				},
 				{
 					Name:  "http-metrics",
-					Image: "systemautoscaler/http-metrics:0.1.0",
+					Image: fmt.Sprintf("%s:%s", HttpMetricsImage, HttpMetricsVersion),
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
 					},

@@ -2,6 +2,7 @@ package apiutils
 
 import (
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
@@ -14,9 +15,9 @@ import (
 )
 
 type ResourceGetter struct {
-	pods      func(namespace string) corelisters.PodNamespaceLister
-	functions func(namespace string) openfaaslisters.FunctionNamespaceLister
-	nodes     corelisters.NodeLister
+	Pods      func(namespace string) corelisters.PodNamespaceLister
+	Functions func(namespace string) openfaaslisters.FunctionNamespaceLister
+	Nodes     corelisters.NodeLister
 }
 
 func NewResourceGetter(
@@ -25,9 +26,9 @@ func NewResourceGetter(
 	nodes corelisters.NodeLister,
 ) *ResourceGetter {
 	return &ResourceGetter{
-		pods:      pods,
-		functions: functions,
-		nodes:     nodes,
+		Pods:      pods,
+		Functions: functions,
+		Nodes:     nodes,
 	}
 }
 
@@ -38,7 +39,7 @@ func (r *ResourceGetter) GetPodsOfFunction(function *openfaasv1.Function) ([]*co
 			ealabels.FunctionNamespaceLabel: function.Namespace,
 			ealabels.FunctionNameLabel:      function.Name,
 		})
-	return r.pods(function.Namespace).List(selector)
+	return r.Pods(function.Namespace).List(selector)
 }
 
 // GetFunctionOfPod returns the function related to a given pod
@@ -51,7 +52,7 @@ func (r *ResourceGetter) GetFunctionOfPod(pod *corev1.Pod) (*openfaasv1.Function
 	if !ok {
 		return nil, fmt.Errorf("function name not found in labels %v", pod.Labels)
 	}
-	return r.functions(namespace).Get(name)
+	return r.Functions(namespace).Get(name)
 }
 
 // GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
@@ -62,10 +63,10 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 			ealabels.FunctionNameLabel:      function.Name,
 			ealabels.NodeLabel:              nodeName,
 		})
-	return r.pods(function.Namespace).List(selector)
+	return r.Pods(function.Namespace).List(selector)
 }
 
-func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient,nodes []string) ([][]int64, error) {
+func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient, nodes []string) ([][]int64, error) {
 	nodeMapping := make(map[string]int, len(nodes))
 	for i, node := range nodes {
 		nodeMapping[node] = i
@@ -96,13 +97,13 @@ func (r *ResourceGetter) GetWorkload(community, communityNamespace string) ([][]
 		map[string]string{
 			ealabels.CommunityLabel.WithNamespace(communityNamespace).String(): community,
 		})
-	nodes, err := r.nodes.List(nodeSelector)
+	nodes, err := r.Nodes.List(nodeSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve nodes using selector %s with error: %s", nodeSelector, err)
 	}
 
 	// Retrieve the functions
-	functions, err := r.functions(communityNamespace).List(labels.Everything())
+	functions, err := r.Functions(communityNamespace).List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
@@ -118,7 +119,7 @@ func (r *ResourceGetter) GetWorkload(community, communityNamespace string) ([][]
 func (r *ResourceGetter) GetMaxDelays(communityNamespace string) ([]int64, error) {
 
 	// Retrieve the functions
-	functions, err := r.functions(communityNamespace).List(labels.Everything())
+	functions, err := r.Functions(communityNamespace).List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}

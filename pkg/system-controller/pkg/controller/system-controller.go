@@ -2,8 +2,9 @@ package controller
 
 import (
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"time"
+
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
@@ -65,8 +66,6 @@ type SystemController struct {
 	syncConfigurationsWorkqueue queue.Queue
 	// syncConfigurationsWorkqueue contains all the communityschedules to sync
 	syncSchedulesWorkqueue queue.Queue
-	// syncDeploymentReplicasWorkqueue contains all the deployment to sync
-	syncDeploymentReplicasWorkqueue queue.Queue
 }
 
 // NewController returns a new SystemController
@@ -159,14 +158,6 @@ func (c *SystemController) runStandardWorker() {
 func (c *SystemController) runSyncSchedulesWorker() {
 	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
 	}
-}
-
-// control loop to handle performance degradation inside communities
-func (c *SystemController) runPerformanceDegradationObserver() {
-}
-
-// control loop to handle cluster topology changes
-func (c *SystemController) runTopologyObserver() {
 }
 
 // Shutdown is called when the controller has finished its work
