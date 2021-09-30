@@ -1,4 +1,4 @@
-package apiutils
+package db
 
 import (
 "flag"

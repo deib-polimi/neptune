@@ -2,6 +2,7 @@ package apiutils
 
 import (
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
@@ -76,7 +77,7 @@ func (r *ResourceGetter) GetNodeDelays(nodes []string) ([][]int64, error) {
 		delayMatrix[i] = make([]int64, len(nodes))
 	}
 
-	c := delayclient.NewDelayClient(NewDBOptions())
+	c := delayclient.NewDelayClient(db.NewDBOptions())
 	err := c.SetupDBConnection()
 	if err != nil {
 		klog.Error(err)

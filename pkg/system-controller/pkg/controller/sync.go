@@ -168,7 +168,7 @@ func (c *SystemController) getNodeDelays(nodes []*corev1.Node) ([][]int64, error
 
 	delays, err := getter.GetNodeDelays(nodeNames)
 
-	return  delays, err
+	return delays, err
 }
 
 func (c *SystemController) syncCommunitySchedules(key string) error {

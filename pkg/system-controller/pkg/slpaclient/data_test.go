@@ -17,7 +17,7 @@ var cc = &eaapi.CommunityConfiguration{
 	Spec: communityConfigSpec,
 }
 
-var delays = [][]int32{
+var delays = [][]int64{
 	{0, 2, 2},
 	{2, 0, 2},
 	{2, 2, 0},
@@ -54,7 +54,7 @@ func TestNewRequestSLPA(t *testing.T) {
 		description string
 		inputCC     *eaapi.CommunityConfiguration
 		inputNodes  []*corev1.Node
-		inputDelays [][]int32
+		inputDelays [][]int64
 		desired     *RequestSLPA
 	}{
 		{
@@ -86,7 +86,7 @@ func TestNewRequestSLPA(t *testing.T) {
 					},
 				},
 				DelayMatrix: DelayMatrix{
-					[][]int32{
+					[][]int64{
 						{0, 2, 2},
 						{2, 0, 2},
 						{2, 2, 0},

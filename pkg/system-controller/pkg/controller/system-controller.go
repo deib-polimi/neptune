@@ -85,18 +85,18 @@ func NewController(
 
 	// Instantiate the Controller
 	controller := &SystemController{
-		edgeAutoscalerClientSet:         eaClientSet,
-		kubernetesClientset:             kubernetesClientset,
-		communityUpdater:                communityUpdater,
-		communityGetter:                 communityGetter,
-		recorder:                        recorder,
-		listers:                         informers.GetListers(),
-		deploymentSynced:                informers.Deployment.Informer().HasSynced,
-		communityScheduleSynced:         informers.CommunitySchedule.Informer().HasSynced,
-		nodeSynced:                      informers.Node.Informer().HasSynced,
-		communityConfigurationsSynced:   informers.CommunityConfiguration.Informer().HasSynced,
-		syncConfigurationsWorkqueue:     queue.NewQueue("CommunityConfigurationsQueue"),
-		syncSchedulesWorkqueue:          queue.NewQueue("CommunityScheduleQueue"),
+		edgeAutoscalerClientSet:       eaClientSet,
+		kubernetesClientset:           kubernetesClientset,
+		communityUpdater:              communityUpdater,
+		communityGetter:               communityGetter,
+		recorder:                      recorder,
+		listers:                       informers.GetListers(),
+		deploymentSynced:              informers.Deployment.Informer().HasSynced,
+		communityScheduleSynced:       informers.CommunitySchedule.Informer().HasSynced,
+		nodeSynced:                    informers.Node.Informer().HasSynced,
+		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
+		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue"),
+		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue"),
 	}
 
 	klog.Info("Setting up event handlers")

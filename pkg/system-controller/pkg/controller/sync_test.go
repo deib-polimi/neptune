@@ -191,35 +191,3 @@ func TestDiff(t *testing.T) {
 		})
 	}
 }
-
-func TestGetNodeDelays(t *testing.T) {
-	testcases := []struct {
-		description string
-		input       []*corev1.Node
-		desired     [][]int32
-	}{
-		{
-			description: "return the node matrix",
-			input:       []*corev1.Node{readyNode, unknownNode, notReadyNode},
-			desired: [][]int32{
-				{0, 2, 2},
-				{2, 0, 2},
-				{2, 2, 0},
-			},
-		},
-	}
-
-	for _, tt := range testcases {
-		t.Run(tt.description, func(t *testing.T) {
-			c := SystemController{}
-			actual, err := c.getNodeDelays(tt.input)
-			require.Nil(t, err)
-			require.Equal(t, tt.desired, actual)
-
-			for node := range actual {
-				require.Zero(t, actual[node][node])
-				require.Equal(t, len(actual), len(actual[node]))
-			}
-		})
-	}
-}
