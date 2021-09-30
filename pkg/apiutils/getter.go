@@ -76,7 +76,7 @@ func (r *ResourceGetter) GetNodeDelays(nodes []string) ([][]int64, error) {
 		delayMatrix[i] = make([]int64, len(nodes))
 	}
 
-	c := delayclient.NewDelayClient(delayclient.NewDBOptions())
+	c := delayclient.NewDelayClient(NewDBOptions())
 	err := c.SetupDBConnection()
 	if err != nil {
 		klog.Error(err)

@@ -1,8 +1,8 @@
-package persistor
+package apiutils
 
 import (
-	"flag"
-	"fmt"
+"flag"
+"fmt"
 )
 
 // Host is the host of the database

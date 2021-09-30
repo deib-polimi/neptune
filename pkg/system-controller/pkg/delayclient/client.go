@@ -3,6 +3,7 @@ package delayclient
 import (
 	"context"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	"k8s.io/klog/v2"
 )
 
@@ -18,11 +19,11 @@ const (
 
 type DelayClient struct {
 	pool        *pgxpool.Pool
-	opts        Options
+	opts        apiutils.Options
 }
 
 // NewDelayClient creates a new DelayClient.
-func NewDelayClient(opts Options) *DelayClient {
+func NewDelayClient(opts apiutils.Options) *DelayClient {
 	return &DelayClient{
 		opts:        opts,
 	}

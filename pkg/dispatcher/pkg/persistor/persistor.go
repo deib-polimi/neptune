@@ -2,6 +2,7 @@ package persistor
 
 import (
 	"context"
+	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -36,12 +37,12 @@ const (
 type MetricsPersistor struct {
 	pool        *pgxpool.Pool
 	metrichChan <-chan metrics.RawResponseTime
-	opts        Options
+	opts        apiutils.Options
 	ctx         context.Context
 }
 
 // NewMetricsPersistor creates a new MetricsPersistor.
-func NewMetricsPersistor(opts Options, rawMetricChan <-chan metrics.RawResponseTime) *MetricsPersistor {
+func NewMetricsPersistor(opts apiutils.Options, rawMetricChan <-chan metrics.RawResponseTime) *MetricsPersistor {
 	return &MetricsPersistor{
 		opts:        opts,
 		metrichChan: rawMetricChan,
