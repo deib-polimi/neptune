@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -30,6 +31,10 @@ type SchedulingInput struct {
 	FunctionMaxDelays []int64  `json:"function_max_delays"`
 }
 
+const(
+	NodeMemoryPadding = 2000000000
+)
+
 type SchedulingOutput struct {
 	NodeNames     []string                                 `json:"node_names"`
 	FunctionNames []string                                 `json:"function_names"`
@@ -46,6 +51,7 @@ type Scheduler struct {
 func NewSchedulingInput(
 	nodes []*corev1.Node,
 	functions []*openfaasv1.Function,
+	pods []*corev1.Pod,
 ) (*SchedulingInput, error) {
 
 	// Check input dimensionality
@@ -60,6 +66,16 @@ func NewSchedulingInput(
 		return nil, fmt.Errorf("number of functions should be greater than 0")
 	}
 
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Name < nodes[j].Name
+	})
+	sort.Slice(functions, func(i, j int) bool {
+		return functions[i].Name < functions[j].Name
+	})
+	sort.Slice(pods, func(i, j int) bool {
+		return pods[i].Name < pods[j].Name
+	})
+
 	nodeNames := make([]string, nNodes)
 	gpuNodeNames := make([]string, 0)
 	for i, node := range nodes {
@@ -70,10 +86,34 @@ func NewSchedulingInput(
 		}
 	}
 
+	untrackedPods := make(map[string][]*corev1.Pod)
+	for _, node := range nodes {
+		untrackedPods[node.Name] = make([]*corev1.Pod, 0)
+	}
+
+	// Retrieve the pods
+	for _, pod := range pods {
+		_, hasFunctionName := pod.Labels[ealabels.FunctionNameLabel]
+		_, hasFunctionNamespace := pod.Labels[ealabels.FunctionNamespaceLabel]
+		if !hasFunctionName && !hasFunctionNamespace {
+			if nodePods, ok := untrackedPods[pod.Spec.NodeName]; ok {
+				untrackedPods[pod.Spec.NodeName] = append(nodePods, pod)
+			}
+		}
+	}
+
 	nodeMemories := make([]int64, nNodes)
 	gpuNodeMemories := make([]int64, 0)
 	for i, node := range nodes {
-		nodeMemories[i] = node.Status.Capacity.Memory().MilliValue()
+		nodeMemories[i] = node.Status.Capacity.Memory().Value() - resource.NewQuantity(NodeMemoryPadding, resource.DecimalSI).Value()
+		if pods, ok := untrackedPods[node.Name]; ok {
+			for _, pod := range pods {
+				for _, container := range pod.Spec.Containers {
+					nodeMemories[i] = nodeMemories[i] - container.Resources.Requests.Memory().Value()
+				}
+			}
+		}
+		klog.Info(nodeMemories[i])
 		value, ok := node.Labels[ealabels.GpuMemoryLabel]
 		if ok {
 			memory, err := strconv.ParseInt(value, 10, 64)
@@ -98,13 +138,15 @@ func NewSchedulingInput(
 		}
 	}
 
+
+	// For gpu it will not be like this
 	functionMemories := make([]int64, nFunctions)
 	for i, function := range functions {
 		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
 			return nil, err
 		}
-		memory := memoryQuantity.MilliValue()
+		memory := memoryQuantity.Value() + HttpMetricsMemory
 		functionMemories[i] = memory
 	}
 

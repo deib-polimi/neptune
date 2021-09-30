@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: delay-discovery
+  namespace: default
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-autoscaler:delay-discovery
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "nodes"]
+  verbs: ["update", "get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["*"]
+- apiGroups: ["edgeautoscaler.polimi.it"]
+  resources: ["communityconfigurations", "communityschedules"]
+  verbs: ["*"]
+# TODO: wildcard for everything
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+  # verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-autoscaler:delay-discovery
+subjects:
+- kind: ServiceAccount
+  name: delay-discovery
+  namespace: default
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: edge-autoscaler:delay-discovery
+  apiGroup: rbac.authorization.k8s.io

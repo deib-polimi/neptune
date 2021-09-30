@@ -2,6 +2,8 @@ package apiutils
 
 import (
 	"fmt"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
+	"k8s.io/klog/v2"
 
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
@@ -63,24 +65,35 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 	return r.pods(function.Namespace).List(selector)
 }
 
-func (r *ResourceGetter) GetNodeDelays(community, communityNamespace string) ([][]int64, error) {
+func (r *ResourceGetter) GetNodeDelays(nodes []string) ([][]int64, error) {
+	nodeMapping := make(map[string]int, len(nodes))
+	for i, node := range nodes {
+		nodeMapping[node] = i
+	}
 
-	// Retrieve the nodes
-	nodeSelector := labels.SelectorFromSet(
-		map[string]string{
-			ealabels.CommunityLabel.WithNamespace(communityNamespace).String(): community,
-		})
-	nodes, err := r.nodes.List(nodeSelector)
+	delayMatrix := make([][]int64, len(nodes))
+	for i, _ := range delayMatrix {
+		delayMatrix[i] = make([]int64, len(nodes))
+	}
+
+	c := delayclient.NewDelayClient(delayclient.NewDBOptions())
+	err := c.SetupDBConnection()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve nodes using selector %s with error: %s", nodeSelector, err)
+		klog.Error(err)
+		return nil, err
 	}
 
-	delays := make([][]int64, len(nodes))
-	for i := range delays {
-		delays[i] = make([]int64, len(nodes))
+	delays, err := c.GetDelays()
+	if err != nil {
+		klog.Error(err)
+		return nil, err
 	}
-	return delays, nil
 
+	for _, delay := range delays {
+		delayMatrix[nodeMapping[delay.FromNode]][nodeMapping[delay.ToNode]] = int64(delay.Latency)
+	}
+
+	return delayMatrix, nil
 }
 
 func (r *ResourceGetter) GetWorkload(community, communityNamespace string) ([][]int64, error) {

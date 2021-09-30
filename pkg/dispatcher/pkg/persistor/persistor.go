@@ -135,12 +135,6 @@ func (p *MetricsPersistor) batchData(terminate bool) {
 // Save insert a new metric into the database.
 func (p *MetricsPersistor) save(batch []metrics.RawResponseTime) error {
 
-	klog.Info("persisting:")
-
-	for _, e := range batch {
-		klog.Infof("%v\n", e)
-	}
-
 	_, err := p.pool.CopyFrom(context.TODO(), pgx.Identifier{table}, columns, pgx.CopyFromSlice(len(batch), func(i int) ([]interface{}, error) {
 		return batch[i].AsCopy(), nil
 	}))

@@ -17,23 +17,27 @@ SELECT create_hypertable('metric', 'timestamp', chunk_time_interval => INTERVAL 
 SELECT add_dimension('metric', 'community', number_partitions => 4);
 SELECT add_dimension('metric', 'namespace', number_partitions => 4);
 
--- ALTER TABLE candlestick SET (
---   timescaledb.compress,
---   timescaledb.compress_segmentby = 'symbol'
---   );
---
--- SELECT add_compression_policy('candlestick', INTERVAL '12 month');
--- SELECT remove_compression_policy('candlestick');
+CREATE TABLE IF NOT EXISTS ping
+(
+  timestamp TIMESTAMP,
+  from_node VARCHAR(50),
+  to_node VARCHAR(50),
+  avg_latency INTEGER,
+  max_latency INTEGER,
+  min_latency INTEGER,
+  PRIMARY KEY (timestamp, from_node)
+  );
 
--- CREATE TABLE IF NOT EXISTS ping
--- (
---   timestamp TIMESTAMP,
---   from VARCHAR(50),
---   to VARCHAR(50),
---   avg_latency INTEGER,
---   max_latency INTEGER,
---   min_latency INTEGER,
---   PRIMARY KEY (timestamp, from)
---   );
+SELECT create_hypertable('ping', 'timestamp', chunk_time_interval => INTERVAL '1 minutes');
 
--- SELECT create_hypertable('ping', 'timestamp', chunk_time_interval => INTERVAL '1 minutes');
+CREATE TABLE IF NOT EXISTS resource
+(
+  timestamp TIMESTAMP,
+  node VARCHAR(50),
+  function VARCHAR(50),
+  namespace VARCHAR(50),
+  cores BIGINT,
+  PRIMARY KEY (timestamp, namespace, function, node)
+);
+
+SELECT create_hypertable('resource', 'timestamp', chunk_time_interval => INTERVAL '5 minutes');

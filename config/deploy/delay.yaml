@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: delay-discovery
+  namespace: default
+  labels:
+    app: delay-discovery
+spec:
+  selector:
+    matchLabels:
+      app: delay-discovery
+  template:
+    metadata:
+      labels:
+        app: delay-discovery
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: delay-discovery
+      # tolerations:
+        # this toleration is to have the daemonset runnable on master nodes
+        # remove it if your masters can't run pods
+#        - key: node-role.kubernetes.io/master
+#          operator: Exists
+#          effect: NoSchedule
+      containers:
+        - name: delay-discovery
+          image: systemautoscaler/delay-discovery
+          imagePullPolicy: Always
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+
