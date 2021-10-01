@@ -102,7 +102,11 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		Gpu:         peer.HasGpu,
 		Latency:     int(delta.Milliseconds()),
 		Description: "",
+		Path:        upstreamReq.URL.Path,
+		Method:      upstreamReq.Method,
 	}
+
+	defer lb.WriteRequestData(&requestData)
 
 	if resErr != nil {
 		requestData.StatusCode = http.StatusBadGateway
@@ -135,10 +139,12 @@ func (lb *LoadBalancer) Balance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	lb.metricChan <- requestData
-
 	klog.Info("request served")
 
+}
+
+func (lb *LoadBalancer) WriteRequestData(rd *metrics.RawResponseTime) {
+	lb.metricChan <- *rd
 }
 
 // AddServer adds a new backend to the server pool
@@ -159,7 +165,7 @@ func (lb *LoadBalancer) AddServer(serverURL *url.URL, node string, hasGpu bool, 
 				IdleConnTimeout:       90 * time.Second,
 				ExpectContinueTimeout: 5 * time.Second,
 			},
-			Timeout: time.Second * 10,
+			Timeout: time.Second * 30,
 		},
 	}
 

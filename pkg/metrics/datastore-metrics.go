@@ -9,7 +9,42 @@ import (
 	"github.com/asecurityteam/rolling"
 )
 
+<<<<<<< Updated upstream:pkg/metrics/datastore-metrics.go
 // Deprecated: The whole package is deprecated.
+=======
+// RawResponseTime is the response time for a single http request
+type RawResponseTime struct {
+	Timestamp   time.Time
+	Source      string
+	Destination string
+	Function    string
+	Namespace   string
+	Community   string
+	Gpu         bool
+	Latency     int
+	StatusCode  int
+	Description string
+	Path        string
+	Method      string
+}
+
+func (r RawResponseTime) AsCopy() []interface{} {
+	return []interface{}{
+		r.Timestamp,
+		r.Source,
+		r.Destination,
+		r.Function,
+		r.Namespace,
+		r.Community,
+		r.Gpu,
+		r.Latency,
+		r.StatusCode,
+		r.Description,
+		r.Path,
+		r.Method,
+	}
+}
+>>>>>>> Stashed changes:pkg/dispatcher/pkg/monitoring/metrics/metrics.go
 
 // ExposedMetrics is a struct that wraps the exposed metrics
 type ExposedMetrics struct {
