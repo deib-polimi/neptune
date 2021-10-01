@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"k8s.io/klog/v2"
 )
 
