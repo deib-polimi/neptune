@@ -1,11 +1,14 @@
 package apiutils
 
 import (
+<<<<<<< Updated upstream
 	"fmt"
 
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
+=======
+>>>>>>> Stashed changes
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	openfaaslisters "github.com/openfaas/faas-netes/pkg/client/listers/openfaas/v1"
@@ -30,29 +33,6 @@ func NewResourceGetter(
 		Functions: functions,
 		Nodes:     nodes,
 	}
-}
-
-// GetPodsOfFunction returns a list of pods which is related to a given function
-func (r *ResourceGetter) GetPodsOfFunction(function *openfaasv1.Function) ([]*corev1.Pod, error) {
-	selector := labels.SelectorFromSet(
-		map[string]string{
-			ealabels.FunctionNamespaceLabel: function.Namespace,
-			ealabels.FunctionNameLabel:      function.Name,
-		})
-	return r.Pods(function.Namespace).List(selector)
-}
-
-// GetFunctionOfPod returns the function related to a given pod
-func (r *ResourceGetter) GetFunctionOfPod(pod *corev1.Pod) (*openfaasv1.Function, error) {
-	namespace, ok := pod.Labels[ealabels.FunctionNamespaceLabel]
-	if !ok {
-		return nil, fmt.Errorf("function namespace not found in labels %v", pod.Labels)
-	}
-	name, ok := pod.Labels[ealabels.FunctionNameLabel]
-	if !ok {
-		return nil, fmt.Errorf("function name not found in labels %v", pod.Labels)
-	}
-	return r.Functions(namespace).Get(name)
 }
 
 // GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node

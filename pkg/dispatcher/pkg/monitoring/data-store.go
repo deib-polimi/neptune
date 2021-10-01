@@ -3,9 +3,11 @@ package monitoring
 import (
 	"net/url"
 
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"github.com/modern-go/concurrent"
 )
+
+// Deprecated: The whole package is deprecated
 
 // BackendList is used to update the backends associated to a function
 type BackendList struct {
