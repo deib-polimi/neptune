@@ -7,6 +7,8 @@ import (
 	"github.com/modern-go/concurrent"
 )
 
+// Deprecated: The whole package is deprecated
+
 // BackendList is used to update the backends associated to a function
 type BackendList struct {
 	// FunctionURL is the URL of the function invo

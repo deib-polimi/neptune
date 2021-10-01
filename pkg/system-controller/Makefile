@@ -15,10 +15,10 @@ fmt:
 	@go fmt ./...
 
 test:
-	@go test -race -v $(shell go list ./... | grep -v e2e) --coverprofile=coverage.out
+	@go test -race $(shell go list ./... | grep -v e2e) --coverprofile=coverage.out
 
 e2e: test
-	@go test -race -v $(shell go list ./... | grep e2e)
+	@go test -race $(shell go list ./... | grep e2e)
 
 coverage: test
 	@go tool cover -func=coverage.out
