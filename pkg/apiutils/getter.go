@@ -1,14 +1,11 @@
 package apiutils
 
 import (
-<<<<<<< Updated upstream
 	"fmt"
 
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
-=======
->>>>>>> Stashed changes
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	openfaaslisters "github.com/openfaas/faas-netes/pkg/client/listers/openfaas/v1"

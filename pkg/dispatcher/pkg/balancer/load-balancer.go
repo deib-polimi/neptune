@@ -11,7 +11,7 @@ import (
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/pool"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
