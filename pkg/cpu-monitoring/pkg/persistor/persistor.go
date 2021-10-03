@@ -5,8 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
-	mp "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"k8s.io/klog/v2"
 )
 
@@ -25,7 +25,7 @@ const (
 	// InsertMetricQuery is the prepare statement for inserting metrics.
 	InsertMetricQuery = "INSERT INTO resource (timestamp, node, function, namespace, community, cores) VALUES ($1, $2, $3, $4, $5, $6);"
 	batchSize         = 1000
-	table             = "metric"
+	table             = "resource"
 )
 
 type Persistor interface {
@@ -42,12 +42,12 @@ type Persistor interface {
 type ResourcePersistor struct {
 	pool         *pgxpool.Pool
 	resourceChan <-chan metrics.RawResourceData
-	opts         mp.Options
+	opts         db.Options
 	ctx          context.Context
 }
 
 // NewResourcePersistor creates a new ResourcePersistor.
-func NewResourcePersistor(opts mp.Options, rawResourceChan <-chan metrics.RawResourceData) Persistor {
+func NewResourcePersistor(opts db.Options, rawResourceChan <-chan metrics.RawResourceData) Persistor {
 	return &ResourcePersistor{
 		opts:         opts,
 		resourceChan: rawResourceChan,

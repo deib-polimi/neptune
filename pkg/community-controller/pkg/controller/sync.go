@@ -20,6 +20,7 @@ import (
 
 const (
 	HttpMetricsImage   = "systemautoscaler/http-metrics"
+	HttpMetrics        = "http-metrics"
 	HttpMetricsVersion = "0.1.0"
 	HttpMetricsPort    = 8080
 	HttpMetricsCpu     = 100

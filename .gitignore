@@ -20,6 +20,7 @@ pkg/*/community-controller
 pkg/*/system-controller
 pkg/*/edge-scheduler
 pkg/*/function-deployment-webhook
+pkg/*/cpu-monitoring
 
 .idea/
 *.pem

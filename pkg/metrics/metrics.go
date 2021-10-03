@@ -39,7 +39,7 @@ type RawResourceData struct {
 	Function  string
 	Namespace string
 	Community string
-	Cores     int
+	Cores     int64
 }
 
 func (r RawResourceData) AsCopy() []interface{} {
