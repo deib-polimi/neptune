@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 )
 
@@ -89,7 +90,7 @@ func NewController(
 		communitySchedulesSynced:       informers.CommunitySchedule.Informer().HasSynced,
 		functionSynced:                 informers.Function.Informer().HasSynced,
 		podsSynced:                     informers.Pod.Informer().HasSynced,
-		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue"),
+		syncCommunityScheduleWorkqueue: queue.NewQueue("SyncCommunityScheduleWorkqueue", workqueue.NewItemExponentialFailureRateLimiter(10*time.Millisecond, 5*time.Second)),
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
 	}

@@ -2,8 +2,9 @@ package controller
 
 import (
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"time"
+
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
@@ -101,8 +102,8 @@ func NewController(
 		communityScheduleSynced:       informers.CommunitySchedule.Informer().HasSynced,
 		nodeSynced:                    informers.Node.Informer().HasSynced,
 		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
-		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue"),
-		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue"),
+		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue", nil),
+		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue", nil),
 	}
 
 	klog.Info("Setting up event handlers")
