@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/resource"
 )

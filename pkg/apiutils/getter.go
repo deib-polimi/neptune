@@ -2,6 +2,7 @@ package apiutils
 
 import (
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"k8s.io/klog/v2"
 
@@ -31,29 +32,6 @@ func NewResourceGetter(
 	}
 }
 
-// GetPodsOfFunction returns a list of pods which is related to a given function
-func (r *ResourceGetter) GetPodsOfFunction(function *openfaasv1.Function) ([]*corev1.Pod, error) {
-	selector := labels.SelectorFromSet(
-		map[string]string{
-			ealabels.FunctionNamespaceLabel: function.Namespace,
-			ealabels.FunctionNameLabel:      function.Name,
-		})
-	return r.pods(function.Namespace).List(selector)
-}
-
-// GetFunctionOfPod returns the function related to a given pod
-func (r *ResourceGetter) GetFunctionOfPod(pod *corev1.Pod) (*openfaasv1.Function, error) {
-	namespace, ok := pod.Labels[ealabels.FunctionNamespaceLabel]
-	if !ok {
-		return nil, fmt.Errorf("function namespace not found in labels %v", pod.Labels)
-	}
-	name, ok := pod.Labels[ealabels.FunctionNameLabel]
-	if !ok {
-		return nil, fmt.Errorf("function name not found in labels %v", pod.Labels)
-	}
-	return r.functions(namespace).Get(name)
-}
-
 // GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
 func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string) ([]*corev1.Pod, error) {
 	selector := labels.SelectorFromSet(
@@ -65,7 +43,7 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 	return r.pods(function.Namespace).List(selector)
 }
 
-func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient,nodes []string) ([][]int64, error) {
+func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient, nodes []string) ([][]int64, error) {
 	nodeMapping := make(map[string]int, len(nodes))
 	for i, node := range nodes {
 		nodeMapping[node] = i
