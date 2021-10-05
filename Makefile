@@ -74,5 +74,9 @@ define action
 	@for c in $(COMPONENTS); \
 		do \
 		$(MAKE) $(1) -C pkg/$$c; \
-    done
+		if [[ $$? -ne 0 ]]; \
+		then \
+			exit 1; \
+		fi; \
+    	done;
 endef

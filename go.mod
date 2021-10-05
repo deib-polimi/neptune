@@ -6,7 +6,11 @@ require (
 	github.com/JohnCGriffin/yogofn v0.0.0-20170613212352-43d7b79df9f1
 	github.com/asecurityteam/rolling v2.0.4+incompatible
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
+	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/emirpasic/gods v1.12.0
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.19.5 // indirect
+	github.com/go-openapi/swag v0.19.14 // indirect
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jmcvetta/randutil v0.0.0-20150817122601-2bb1b664bcff
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
