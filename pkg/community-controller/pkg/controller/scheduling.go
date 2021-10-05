@@ -31,7 +31,7 @@ type SchedulingInput struct {
 	FunctionMaxDelays []int64  `json:"function_max_delays"`
 }
 
-const(
+const (
 	NodeMemoryPadding = 2000000000
 )
 
@@ -137,7 +137,6 @@ func NewSchedulingInput(
 			gpuFunctionNames = append(gpuFunctionNames, key)
 		}
 	}
-
 
 	// For gpu it will not be like this
 	functionMemories := make([]int64, nFunctions)

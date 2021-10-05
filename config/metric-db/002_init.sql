@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS metric
   gpu BOOLEAN,
   status INTEGER,
   description VARCHAR(500),
+  path VARCHAR(500),
+  method VARCHAR(10),
   PRIMARY KEY (timestamp, source, destination, function, namespace, community)
   );
 

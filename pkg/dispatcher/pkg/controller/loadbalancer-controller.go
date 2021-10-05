@@ -13,11 +13,11 @@ import (
 
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"github.com/lterrac/edge-autoscaler/pkg/queue"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

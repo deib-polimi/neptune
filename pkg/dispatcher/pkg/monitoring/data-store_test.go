@@ -5,7 +5,7 @@ package monitoring
 // 	"testing"
 // 	"time"
 
-// 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/monitoring/metrics"
+// 	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 // 	"github.com/stretchr/testify/require"
 // )
 

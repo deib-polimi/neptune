@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
@@ -51,8 +50,6 @@ type CommunityController struct {
 	communityName      string
 	communityNamespace string
 
-	resGetter *apiutils.ResourceGetter
-
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
@@ -94,8 +91,6 @@ func NewController(
 		communityName:                  communityName,
 		communityNamespace:             communityNamespace,
 	}
-
-	controller.resGetter = apiutils.NewResourceGetter(controller.listers.Pods, controller.listers.Functions, controller.listers.NodeLister)
 
 	klog.Info("Setting up event handlers")
 	informers.CommunitySchedule.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
