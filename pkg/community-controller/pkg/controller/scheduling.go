@@ -21,17 +21,20 @@ import (
 )
 
 type SchedulingInput struct {
-	NodeNames         []string `json:"node_names"`
-	GpuNodeNames      []string `json:"gpu_node_names"`
-	FunctionNames     []string `json:"function_names"`
-	GpuFunctionNames  []string `json:"gpu_function_names"`
-	NodeMemories      []int64  `json:"node_memories"`
-	GpuNodeMemories   []int64  `json:"gpu_node_memories"`
-	FunctionMemories  []int64  `json:"function_memories"`
-	FunctionMaxDelays []int64  `json:"function_max_delays"`
+	NodeNames         []string                               `json:"node_names"`
+	GpuNodeNames      []string                               `json:"gpu_node_names"`
+	FunctionNames     []string                               `json:"function_names"`
+	GpuFunctionNames  []string                               `json:"gpu_function_names"`
+	NodeCores         []int64                                `json:"node_cores"`
+	NodeMemories      []int64                                `json:"node_memories"`
+	GpuNodeMemories   []int64                                `json:"gpu_node_memories"`
+	FunctionMemories  []int64                                `json:"function_memories"`
+	FunctionMaxDelays []int64                                `json:"function_max_delays"`
+	ActualAllocation  eav1alpha1.CommunityFunctionAllocation `json:"actual_allocations"`
 }
 
 const (
+	NodeCorePadding   = 500
 	NodeMemoryPadding = 2000000000
 )
 
@@ -52,6 +55,7 @@ func NewSchedulingInput(
 	nodes []*corev1.Node,
 	functions []*openfaasv1.Function,
 	pods []*corev1.Pod,
+	actualAllocation eav1alpha1.CommunityFunctionAllocation,
 ) (*SchedulingInput, error) {
 
 	// Check input dimensionality
@@ -102,18 +106,20 @@ func NewSchedulingInput(
 		}
 	}
 
+	nodeCores := make([]int64, nNodes)
 	nodeMemories := make([]int64, nNodes)
 	gpuNodeMemories := make([]int64, 0)
 	for i, node := range nodes {
+		nodeCores[i] = node.Status.Capacity.Cpu().MilliValue() - resource.NewMilliQuantity(NodeCorePadding, resource.DecimalSI).MilliValue()
 		nodeMemories[i] = node.Status.Capacity.Memory().Value() - resource.NewQuantity(NodeMemoryPadding, resource.DecimalSI).Value()
 		if pods, ok := untrackedPods[node.Name]; ok {
 			for _, pod := range pods {
 				for _, container := range pod.Spec.Containers {
 					nodeMemories[i] = nodeMemories[i] - container.Resources.Requests.Memory().Value()
+					nodeCores[i] = nodeCores[i] - container.Resources.Requests.Cpu().MilliValue()
 				}
 			}
 		}
-		klog.Info(nodeMemories[i])
 		value, ok := node.Labels[ealabels.GpuMemoryLabel]
 		if ok {
 			memory, err := strconv.ParseInt(value, 10, 64)
@@ -170,6 +176,8 @@ func NewSchedulingInput(
 		GpuFunctionNames:  gpuFunctionNames,
 		FunctionMemories:  functionMemories,
 		FunctionMaxDelays: functionMaxDelays,
+		NodeCores:         nodeCores,
+		ActualAllocation:  actualAllocation,
 	}, nil
 }
 

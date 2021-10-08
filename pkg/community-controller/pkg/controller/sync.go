@@ -49,7 +49,12 @@ func (c *CommunityController) runScheduler(_ string) error {
 		return fmt.Errorf("failed to retrieve pods with error: %s", err)
 	}
 
-	input, err := NewSchedulingInput(nodes, functions, pods)
+	communitySchedule, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve community schedule with error: %s", err)
+	}
+
+	input, err := NewSchedulingInput(nodes, functions, pods, communitySchedule.Spec.Allocations)
 
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
