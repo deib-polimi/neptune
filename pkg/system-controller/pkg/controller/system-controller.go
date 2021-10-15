@@ -154,6 +154,9 @@ func (c *SystemController) runStandardWorker() {
 	}
 }
 
+func (c *SystemController) runPerformanceDegradationObserver() {
+}
+
 // handles standard partitioning (e.g. first partioning and cache sync)
 func (c *SystemController) runSyncSchedulesWorker() {
 	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
