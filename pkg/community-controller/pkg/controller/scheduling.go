@@ -36,10 +36,12 @@ const (
 )
 
 type SchedulingOutput struct {
-	NodeNames     []string                                 `json:"node_names"`
-	FunctionNames []string                                 `json:"function_names"`
-	RoutingRules  map[string]map[string]map[string]float64 `json:"routing_rules"`
-	Allocations   map[string]map[string]bool               `json:"allocations"`
+	NodeNames       []string                                 `json:"node_names"`
+	FunctionNames   []string                                 `json:"function_names"`
+	CpuRoutingRules map[string]map[string]map[string]float64 `json:"cpu_routing_rules"`
+	CpuAllocations  map[string]map[string]bool               `json:"cpu_allocations"`
+	GpuRoutingRules map[string]map[string]map[string]float64 `json:"gpu_routing_rules"`
+	GpuAllocations  map[string]map[string]bool               `json:"gpu_allocations"`
 }
 
 type Scheduler struct {
@@ -116,11 +118,11 @@ func NewSchedulingInput(
 		klog.Info(nodeMemories[i])
 		value, ok := node.Labels[ealabels.GpuMemoryLabel]
 		if ok {
-			memory, err := strconv.ParseInt(value, 10, 64)
+			memory, err := resource.ParseQuantity(value)
 			if err != nil {
 				klog.Errorf("can not parse value %s as gpu memory (int value) with error %s", value, err)
 			}
-			gpuNodeMemories = append(gpuNodeMemories, memory)
+			gpuNodeMemories = append(gpuNodeMemories, memory.Value())
 		}
 	}
 
@@ -235,23 +237,39 @@ func (s *Scheduler) Schedule(input *SchedulingInput) (*SchedulingOutput, error) 
 
 // ToCommunitySchedule transform a scheduling output to a Community schedule CRD
 func (so *SchedulingOutput) ToCommunitySchedule(cs *eav1alpha1.CommunitySchedule) *eav1alpha1.CommunitySchedule {
-	routingRules := make(eav1alpha1.CommunitySourceRoutingRule)
-	for source, functions := range so.RoutingRules {
-		if _, ok := routingRules[source]; !ok {
-			routingRules[source] = make(eav1alpha1.CommunityFunctionRoutingRule)
+
+	newCS := cs.DeepCopy()
+
+	newCS.Spec.CpuRoutingRules = so.makeRoutingRules(so.CpuRoutingRules)
+	newCS.Spec.GpuRoutingRules = so.makeRoutingRules(so.GpuRoutingRules)
+
+	newCS.Spec.CpuAllocations = so.makeAllocations(so.CpuAllocations)
+	newCS.Spec.GpuAllocations = so.makeAllocations(so.GpuAllocations)
+
+	return newCS
+}
+
+func (so *SchedulingOutput) makeRoutingRules(actual map[string]map[string]map[string]float64) eav1alpha1.CommunitySourceRoutingRule {
+	rr := make(eav1alpha1.CommunitySourceRoutingRule)
+	for source, functions := range actual {
+		if _, ok := rr[source]; !ok {
+			rr[source] = make(eav1alpha1.CommunityFunctionRoutingRule)
 		}
 		for function, destinations := range functions {
-			if _, ok := routingRules[source][function]; !ok {
-				routingRules[source][function] = make(eav1alpha1.CommunityDestinationRoutingRule)
+			if _, ok := rr[source][function]; !ok {
+				rr[source][function] = make(eav1alpha1.CommunityDestinationRoutingRule)
 			}
 			for destination, v := range destinations {
-				routingRules[source][function][destination] = *resource.NewMilliQuantity(int64(v*1000), resource.DecimalSI)
+				rr[source][function][destination] = *resource.NewMilliQuantity(int64(v*1000), resource.DecimalSI)
 			}
 		}
 	}
+	return rr
+}
 
+func (so *SchedulingOutput) makeAllocations(actual map[string]map[string]bool) eav1alpha1.CommunityFunctionAllocation {
 	allocations := make(eav1alpha1.CommunityFunctionAllocation)
-	for function, nodes := range so.Allocations {
+	for function, nodes := range actual {
 		if _, ok := allocations[function]; !ok {
 			allocations[function] = make(eav1alpha1.CommunityNodeAllocation)
 		}
@@ -261,10 +279,5 @@ func (so *SchedulingOutput) ToCommunitySchedule(cs *eav1alpha1.CommunitySchedule
 			}
 		}
 	}
-
-	newCS := cs.DeepCopy()
-	newCS.Spec.RoutingRules = routingRules
-	newCS.Spec.Allocations = allocations
-
-	return newCS
+	return allocations
 }

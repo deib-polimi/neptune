@@ -207,10 +207,10 @@ func newFakeSchedulerServer() {
 		}
 
 		output := &SchedulingOutput{
-			NodeNames:     input.NodeNames,
-			FunctionNames: input.FunctionNames,
-			RoutingRules:  routingRules,
-			Allocations:   allocations,
+			NodeNames:       input.NodeNames,
+			FunctionNames:   input.FunctionNames,
+			CpuRoutingRules: routingRules,
+			CpuAllocations:  allocations,
 		}
 
 		resp, err := json.Marshal(output)

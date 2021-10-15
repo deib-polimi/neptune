@@ -58,7 +58,7 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 	klog.Infof("syncing community schedule %s/%s", namespace, name)
 
 	// retrieve routing rules
-	sourceRules := cs.Spec.RoutingRules
+	sourceRules := cs.Spec.CpuRoutingRules
 
 	for source, functionRules := range sourceRules {
 		if source != node.Name {

@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -288,8 +289,8 @@ func NewCommunitySchedule(namespace, name string, conf *eav1alpha1.CommunityConf
 			},
 		},
 		Spec: eav1alpha1.CommunityScheduleSpec{
-			RoutingRules:     make(eav1alpha1.CommunitySourceRoutingRule),
-			Allocations:      make(eav1alpha1.CommunityFunctionAllocation),
+			CpuRoutingRules:  make(eav1alpha1.CommunitySourceRoutingRule),
+			CpuAllocations:   make(eav1alpha1.CommunityFunctionAllocation),
 			AlgorithmService: "http://allocation-algorithm.default.svc.cluster.local:5000",
 		},
 	}
@@ -329,12 +330,12 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: map[string]string{
-						"kubernetes.io/hostname": "k3s-master",
+						"node-role.kubernetes.io/master": "",
 					},
 					Containers: []corev1.Container{
 						{
 							Name:            "controller",
-							Image:           "systemautoscaler/community-controller:dev",
+							Image:           "systemautoscaler/community-controller:dev.1",
 							ImagePullPolicy: corev1.PullAlways,
 							Env: []corev1.EnvVar{
 								{

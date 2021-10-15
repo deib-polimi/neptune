@@ -30,10 +30,14 @@ const (
 	FunctionNameLabel string = "edgeautoscaler.polimi.it/function-name"
 
 	// FunctionKey is the label used to identify the node related to the resource
-	NodeLabel             string = "edgeautoscaler.polimi.it/node"
-	GpuLabel              string = "nvidia.com/gpu"
-	GpuMemoryLabel        string = "nvidia.com/gpu-memory"
-	GpuFunctionLabel      string = "nvidia.com/gpu-function"
+	NodeLabel string = "edgeautoscaler.polimi.it/node"
+
+	// Nodes labels
+	GpuLabel       string = "edgeautoscaler.polimi.it/gpu"
+	GpuMemoryLabel string = "edgeautoscaler.polimi.it/gpu-memory"
+
+	// Functions labels
+	GpuFunctionLabel      string = "edgeautoscaler.polimi.it/gpu-function"
 	FunctionMaxDelayLabel string = "edgeautoscaler.polimi.it/function-max-delay"
 
 	// WorkerLabel is used to mark nodes as workers

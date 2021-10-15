@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	rand "math/rand"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
@@ -14,7 +16,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	rand "math/rand"
 )
 
 const (
@@ -90,7 +91,6 @@ func (c *CommunityController) bind(pod *corev1.Pod, nodeName string) error {
 // syncCommunityScheduleAllocation ensures that pods serving a certain function are created
 // or deleted according to the community schedule allocation
 func (c *CommunityController) syncCommunityScheduleAllocation(key string) error {
-
 	klog.Infof("Syncing community schedule allocations %s", key)
 
 	// Convert the namespace/name string into a distinct namespace and name
@@ -106,11 +106,6 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		return err
 	}
 
-	functionKeys := cs.Spec.Allocations
-
-	deleteSet := make([]*corev1.Pod, 0)
-	createSet := make([]*corev1.Pod, 0)
-
 	// Retrieve the pods managed by a certain community
 	podSelector := labels.SelectorFromSet(
 		map[string]string{
@@ -121,6 +116,42 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		klog.Errorf("can not list pod using selector %v, with error %v", podSelector, err)
 		return err
 	}
+
+	cpu_pods := []*corev1.Pod{}
+	gpu_pods := []*corev1.Pod{}
+
+	for _, p := range pods {
+		if _, ok := p.Labels[ealabels.GpuFunctionLabel]; ok {
+			gpu_pods = append(gpu_pods, p)
+		} else {
+			cpu_pods = append(cpu_pods, p)
+		}
+	}
+
+	err = c.sync(cs, gpu_pods, cs.Spec.CpuAllocations)
+
+	if err != nil {
+		return fmt.Errorf("failed to sync community schedule allocation for GPU pods with error: %s", err)
+	}
+
+	err = c.sync(cs, cpu_pods, cs.Spec.GpuAllocations)
+
+	if err != nil {
+		return fmt.Errorf("failed to sync community schedule allocation for CPU pods with error: %s", err)
+	}
+
+	return nil
+}
+
+// sync is used to sync both GPU and CPU pods. The switch strategy is determined with a bool since
+// most of the code is shared between the two procedures
+func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev1.Pod, functionKeys v1alpha1.CommunityFunctionAllocation) error {
+
+	var err error
+
+	// used to delete duplicated pods
+	deleteSet := make([]*corev1.Pod, 0)
+	createSet := make([]*corev1.Pod, 0)
 
 	// Find the pods that are correctly deployed
 	// Pods which are not correctly deployed are appended in the deleteSet
@@ -134,6 +165,8 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 					if _, ok := podsMap[fKey]; !ok {
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
+
+					//TODO: the inner map should contain two pods at most in case of function with GPU
 					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
 						deleteSet = append(deleteSet, pod)
 					} else {
