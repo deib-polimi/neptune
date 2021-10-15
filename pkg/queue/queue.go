@@ -2,11 +2,16 @@ package queue
 
 import (
 	"fmt"
+	"time"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+)
+
+const(
+	MaxRequeues = 50
 )
 
 // TODO: should add a way to handle default operations such as CRD added, deleted or updated
@@ -21,7 +26,7 @@ type Queue struct {
 // NewQueue returns a new Queue
 func NewQueue(name string, rl workqueue.RateLimiter) Queue {
 	if rl == nil {
-		rl = workqueue.DefaultControllerRateLimiter()
+		rl = workqueue.NewItemExponentialFailureRateLimiter(10*time.Millisecond, 20*time.Second)
 	}
 
 	return Queue{
@@ -36,6 +41,11 @@ func (q *Queue) ProcessNextItem(sync syncFunc) bool {
 
 	if shutdown {
 		return false
+	}
+
+	if q.queue.NumRequeues(obj) > MaxRequeues {
+		q.queue.Forget(obj)
+		q.queue.Done(obj)
 	}
 
 	// We wrap this block in a func so we can defer c.workqueue.Done.

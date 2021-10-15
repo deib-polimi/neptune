@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  labels:
+    name: carts
+  namespace: openfaas-fn
+spec:
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    edgeautoscaler.polimi.it/function-name: "carts"
+    edgeautoscaler.polimi.it/function-namespace: "openfaas-fn"
+  topologyKeys:
+    - "kubernetes.io/hostname"
+    - "*"
+

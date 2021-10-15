@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-end
+  labels:
+    name: front-end
+  namespace: openfaas-fn
+spec:
+  selector:
+    app: front-end
+#    edgeautoscaler.polimi.it/function-name: "front-end"
+#    edgeautoscaler.polimi.it/function-namespace: "openfaas-fn"
+  ports:
+    # the port that this service should serve on
+    - port: 80
+      targetPort: 8080
+  topologyKeys:
+    - "kubernetes.io/hostname"
+    - "*"
