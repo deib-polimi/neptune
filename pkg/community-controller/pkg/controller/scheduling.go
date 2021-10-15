@@ -52,6 +52,8 @@ type Scheduler struct {
 
 // NewSchedulingInput generates a new SchedulingInput
 func NewSchedulingInput(
+	namespace string,
+	community string,
 	nodes []*corev1.Node,
 	functions []*openfaasv1.Function,
 	pods []*corev1.Pod,

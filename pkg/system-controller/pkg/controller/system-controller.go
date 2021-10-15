@@ -49,7 +49,7 @@ type SystemController struct {
 	communityUpdater *CommunityUpdater
 
 	// delayClient retrieves the delay matrix
-	delayClient delayclient.DelayClient
+	delayClient *delayclient.SQLDelayClient
 
 	listers informers.Listers
 
@@ -66,8 +66,6 @@ type SystemController struct {
 	syncConfigurationsWorkqueue queue.Queue
 	// syncConfigurationsWorkqueue contains all the communityschedules to sync
 	syncSchedulesWorkqueue queue.Queue
-	// syncDeploymentReplicasWorkqueue contains all the deployment to sync
-	syncDeploymentReplicasWorkqueue queue.Queue
 }
 
 // NewController returns a new SystemController
@@ -77,7 +75,7 @@ func NewController(
 	informers informers.Informers,
 	communityUpdater *CommunityUpdater,
 	communityGetter slpaClient.ClientCommunityGetter,
-	delayClient delayclient.DelayClient,
+	delayClient *delayclient.SQLDelayClient,
 ) *SystemController {
 
 	// Create event broadcaster

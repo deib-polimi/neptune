@@ -54,7 +54,7 @@ func (c *CommunityController) runScheduler(_ string) error {
 		return fmt.Errorf("failed to retrieve community schedule with error: %s", err)
 	}
 
-	input, err := NewSchedulingInput(nodes, functions, pods, communitySchedule.Spec.Allocations)
+	input, err := NewSchedulingInput(communitySchedule.Namespace, communitySchedule.Name, nodes, functions, pods, communitySchedule.Spec.Allocations)
 
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
