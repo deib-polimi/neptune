@@ -43,7 +43,7 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 	return r.Pods(function.Namespace).List(selector)
 }
 
-func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient, nodes []string) ([][]int64, error) {
+func (r *ResourceGetter) GetNodeDelays(client *delayclient.SQLDelayClient, nodes []string) ([][]int64, error) {
 	nodeMapping := make(map[string]int, len(nodes))
 	for i, node := range nodes {
 		nodeMapping[node] = i

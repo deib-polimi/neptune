@@ -14,6 +14,8 @@ spec:
       labels:
         app: cpu-monitoring
     spec:
+      nodeSelector:
+        edgeautoscaler.polimi.it/node: worker
       automountServiceAccountToken: true
       serviceAccountName: cpu-monitoring
       containers:
@@ -32,9 +34,9 @@ metadata:
   name: cpu-monitoring
   namespace: kube-system
 rules:
-- apiGroups: ["*"]
-  resources: ["*"]
-  verbs: ["*"]
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -46,9 +48,9 @@ roleRef:
   name: cpu-monitoring
   apiGroup: "rbac.authorization.k8s.io"
 subjects:
-- kind: ServiceAccount
-  name: cpu-monitoring
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: cpu-monitoring
+    namespace: kube-system
 ---
 apiVersion: v1
 kind: ServiceAccount

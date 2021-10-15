@@ -49,7 +49,7 @@ type SystemController struct {
 	communityUpdater *CommunityUpdater
 
 	// delayClient retrieves the delay matrix
-	delayClient delayclient.DelayClient
+	delayClient *delayclient.SQLDelayClient
 
 	listers informers.Listers
 
@@ -75,7 +75,7 @@ func NewController(
 	informers informers.Informers,
 	communityUpdater *CommunityUpdater,
 	communityGetter slpaClient.ClientCommunityGetter,
-	delayClient delayclient.DelayClient,
+	delayClient *delayclient.SQLDelayClient,
 ) *SystemController {
 
 	// Create event broadcaster
