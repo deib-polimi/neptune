@@ -2,15 +2,14 @@ package e2e_test
 
 import (
 	"context"
-	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
+	"testing"
+	"time"
+
 	openfaasclientsent "github.com/openfaas/faas-netes/pkg/client/clientset/versioned"
 	openfaasinformers "github.com/openfaas/faas-netes/pkg/client/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
-	"testing"
-	"time"
 
 	eaclientset "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned"
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
@@ -18,6 +17,7 @@ import (
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/signals"
 	syscontroller "github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/controller"
+	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/delayclient"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
 	coreinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -91,9 +91,7 @@ var _ = BeforeSuite(func() {
 	communityGetter := slpaclient.NewFakeClient()
 	By("bootstrapping controller")
 
-	delayClient := FakeDelayClient{
-		listers: informers.GetListers(),
-	}
+	delayClient := delayclient.NewFakeClient(informers.GetListers())
 
 	systemController = syscontroller.NewController(
 		kubeClient,
@@ -157,29 +155,4 @@ func setup() {
 
 	_, err = eaClient.EdgeautoscalerV1alpha1().CommunityConfigurations(namespace).Create(context.TODO(), cc, metav1.CreateOptions{})
 	Expect(err).ShouldNot(HaveOccurred())
-}
-
-type FakeDelayClient struct {
-	listers informers.Listers
-}
-
-func (f FakeDelayClient) GetDelays() ([]*delayclient.NodeDelay, error) {
-	nodes, err := f.listers.NodeLister.List(labels.Everything())
-	if err != nil {
-		klog.Error(err)
-		return nil, err
-	}
-
-	delays := make([]*delayclient.NodeDelay, 0)
-	for _, from := range nodes {
-		for _, to := range nodes {
-			delays = append(delays, &delayclient.NodeDelay{
-				FromNode: from.Name,
-				ToNode:   to.Name,
-				Latency:  0,
-			})
-		}
-	}
-
-	return delays, nil
 }
