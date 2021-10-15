@@ -100,8 +100,8 @@ func NewController(
 		communityScheduleSynced:       informers.CommunitySchedule.Informer().HasSynced,
 		nodeSynced:                    informers.Node.Informer().HasSynced,
 		communityConfigurationsSynced: informers.CommunityConfiguration.Informer().HasSynced,
-		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue"),
-		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue"),
+		syncConfigurationsWorkqueue:   queue.NewQueue("CommunityConfigurationsQueue", nil),
+		syncSchedulesWorkqueue:        queue.NewQueue("CommunityScheduleQueue", nil),
 	}
 
 	klog.Info("Setting up event handlers")

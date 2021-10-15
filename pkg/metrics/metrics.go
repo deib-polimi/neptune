@@ -16,6 +16,8 @@ type RawResponseTime struct {
 	Latency     int
 	StatusCode  int
 	Description string
+	Path        string
+	Method      string
 }
 
 func (r RawResponseTime) AsCopy() []interface{} {
@@ -30,6 +32,8 @@ func (r RawResponseTime) AsCopy() []interface{} {
 		r.Latency,
 		r.StatusCode,
 		r.Description,
+		r.Path,
+		r.Method,
 	}
 }
 

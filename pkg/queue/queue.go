@@ -19,9 +19,13 @@ type Queue struct {
 }
 
 // NewQueue returns a new Queue
-func NewQueue(name string) Queue {
+func NewQueue(name string, rl workqueue.RateLimiter) Queue {
+	if rl == nil {
+		rl = workqueue.DefaultControllerRateLimiter()
+	}
+
 	return Queue{
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), name),
+		queue: workqueue.NewNamedRateLimitingQueue(rl, name),
 	}
 }
 

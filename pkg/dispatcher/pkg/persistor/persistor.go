@@ -22,6 +22,8 @@ var (
 		"latency",
 		"status",
 		"description",
+		"path",
+		"method",
 	}
 )
 

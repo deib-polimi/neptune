@@ -2,13 +2,14 @@ package controller
 
 import (
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/lterrac/edge-autoscaler/pkg/db"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
@@ -17,7 +18,7 @@ import (
 	eascheme "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/scheme"
 	"github.com/lterrac/edge-autoscaler/pkg/informers"
 	"github.com/lterrac/edge-autoscaler/pkg/metrics"
-	workqueue "github.com/lterrac/edge-autoscaler/pkg/queue"
+	"github.com/lterrac/edge-autoscaler/pkg/queue"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 )
 
@@ -66,7 +68,7 @@ type LoadBalancerController struct {
 	recorder record.EventRecorder
 
 	// workqueue contains all the communityconfigurations to sync
-	workqueue workqueue.Queue
+	workqueue queue.Queue
 
 	serverListener http.Server
 
@@ -121,7 +123,7 @@ func NewController(
 		communitySchedulesSynced:      informers.CommunitySchedule.Informer().HasSynced,
 		deploymentsSynced:             informers.Deployment.Informer().HasSynced,
 		functionSynced:                informers.Function.Informer().HasSynced,
-		workqueue:                     workqueue.NewQueue("CommunityScheduleQueue"),
+		workqueue:                     queue.NewQueue("CommunityScheduleQueue", workqueue.NewItemExponentialFailureRateLimiter(10*time.Millisecond, 5*time.Second)),
 		// monitoringChan:                monitoringChan,
 		// backendChan:                   backendChan,
 		// functionChan:                  functionChan,
