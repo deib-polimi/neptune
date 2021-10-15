@@ -13,7 +13,6 @@ import (
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,7 +37,7 @@ type scraper struct {
 	node         string
 }
 
-func New(pods func(namespace string) corelisters.PodNamespaceLister, metricsClient v1beta1.MetricsV1beta1Interface, node *v1.Node) (Scraper, error) {
+func New(pods func(namespace string) corelisters.PodNamespaceLister, metricsClient v1beta1.MetricsV1beta1Interface, node *corev1.Node) (Scraper, error) {
 	podGetter, err := apiutils.NewPodGetter(pods)
 
 	if err != nil {
@@ -134,28 +133,3 @@ func (s *scraper) scrape() {
 		}
 	}
 }
-
-// func (s scraper) containerCPU(container string) (uint64, error) {
-// 	// TODO: make an average over the last x seconds.
-// 	// use start and end fields
-// 	info := &cadvisorv1.ContainerInfoRequest{
-// 		Start: time.Now().Add(-5 * time.Second),
-// 		End:   time.Now(),
-// 	}
-
-// 	cInfo, err := s.cadvisor.ContainerInfo(container, info)
-
-// 	if err != nil {
-// 		return 0, fmt.Errorf("failed to retrieve metrics for container %s: %v", container, err)
-// 	}
-
-// 	var avgCPU uint64
-
-// 	for _, stat := range cInfo.Stats {
-// 		avgCPU += stat.Cpu.Usage.Total
-// 	}
-
-// 	avgCPU = avgCPU / uint64(len(cInfo.Stats))
-
-// 	return avgCPU, nil
-// }
