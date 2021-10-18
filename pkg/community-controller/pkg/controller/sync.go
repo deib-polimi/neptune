@@ -128,13 +128,13 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		}
 	}
 
-	err = c.sync(cs, gpu_pods, cs.Spec.CpuAllocations)
+	err = c.sync(cs, gpu_pods, cs.Spec.GpuAllocations, true)
 
 	if err != nil {
 		return fmt.Errorf("failed to sync community schedule allocation for GPU pods with error: %s", err)
 	}
 
-	err = c.sync(cs, cpu_pods, cs.Spec.GpuAllocations)
+	err = c.sync(cs, cpu_pods, cs.Spec.CpuAllocations, false)
 
 	if err != nil {
 		return fmt.Errorf("failed to sync community schedule allocation for CPU pods with error: %s", err)
@@ -145,7 +145,7 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 
 // sync is used to sync both GPU and CPU pods. The switch strategy is determined with a bool since
 // most of the code is shared between the two procedures
-func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev1.Pod, functionKeys v1alpha1.CommunityFunctionAllocation) error {
+func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev1.Pod, functionKeys v1alpha1.CommunityFunctionAllocation, gpu bool) error {
 
 	var err error
 
@@ -195,10 +195,19 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 			if ok {
 				if _, ok := podsMap[functionKey][node]; ok {
 					delete(podsMap[functionKey], node)
-				} else {
-					pod := newPod(function, cs, node)
-					createSet = append(createSet, pod)
+					continue
 				}
+
+				var pod *corev1.Pod
+				if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok {
+					pod = newGPUPod(function, cs, node)
+
+				} else {
+					pod = newCPUPod(function, cs, node)
+				}
+
+				createSet = append(createSet, pod)
+
 			}
 		}
 	}
@@ -234,10 +243,10 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 	return nil
 }
 
-// newPod creates a new Pod for a Function resource. It also sets
+// newCPUPod creates a new Pod for a Function resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Function resource that 'owns' it.
-func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
+func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
 
 	envVars := makeEnvVars(function)
 
@@ -279,6 +288,106 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 					ImagePullPolicy: corev1.PullAlways,
 					Env:             envVars,
 					Resources:       *resources,
+					// TODO: add probe with Function Factory
+					//LivenessProbe:   probes.Liveness,
+					//ReadinessProbe:  probes.Readiness,
+				},
+				{
+					Name:  "http-metrics",
+					Image: "systemautoscaler/http-metrics:0.1.0",
+					Ports: []corev1.ContainerPort{
+						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
+					},
+					ImagePullPolicy: corev1.PullAlways,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ADDRESS",
+							Value: "localhost",
+						},
+						{
+							Name:  "PORT",
+							Value: "8080",
+						},
+						{
+							Name:  "WINDOW_SIZE",
+							Value: "30s",
+						},
+						{
+							Name:  "WINDOW_GRANULARITY",
+							Value: "1ms",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
+						},
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return pod
+
+}
+
+// newGPUPod creates a new Pod for a Function resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the Function resource that 'owns' it.
+func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
+
+	envVars := makeEnvVars(function)
+
+	resources, err := makeResources(function)
+	if err != nil {
+		klog.Warningf("Function %s resources parsing failed: %v",
+			function.Spec.Name, err)
+	}
+
+	if _, ok := function.Labels[ealabels.GpuFunctionMemoryLabel]; !ok {
+		klog.Warningf("Function %s gpu memory not set: %v",
+			function.Spec.Name, err)
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        fmt.Sprintf("%s-%s", function.Spec.Name, hash(8)),
+			Annotations: function.Annotations,
+			Namespace:   function.Namespace,
+			Labels: map[string]string{
+				ealabels.FunctionNamespaceLabel:                              function.Namespace,
+				ealabels.FunctionNameLabel:                                   function.Name,
+				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
+				ealabels.NodeLabel:                                           node,
+				"autoscaling":                                                "vertical",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(function, schema.GroupVersionKind{
+					Group:   openfaasv1.SchemeGroupVersion.Group,
+					Version: openfaasv1.SchemeGroupVersion.Version,
+					Kind:    "Function",
+				}),
+			},
+		},
+		Spec: corev1.PodSpec{
+			SchedulerName: "edge-autoscaler",
+			Containers: []corev1.Container{
+				{
+					Name:  function.Spec.Name,
+					Image: function.Spec.Image,
+					Ports: []corev1.ContainerPort{
+						// default tensorflow serving REST api port si 8501
+						{ContainerPort: 8501, Protocol: corev1.ProtocolTCP},
+					},
+					ImagePullPolicy: corev1.PullAlways,
+					Env:             envVars,
+					Resources:       *resources,
+					Args:            []string{fmt.Sprintf("--per_process_gpu_memory_fraction=%v", function.Labels[ealabels.GpuFunctionMemoryLabel])},
 					// TODO: add probe with Function Factory
 					//LivenessProbe:   probes.Liveness,
 					//ReadinessProbe:  probes.Readiness,
