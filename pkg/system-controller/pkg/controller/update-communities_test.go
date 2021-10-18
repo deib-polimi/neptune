@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	eafake "github.com/lterrac/edge-autoscaler/pkg/generated/clientset/versioned/fake"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	"github.com/lterrac/edge-autoscaler/pkg/system-controller/pkg/slpaclient"
@@ -30,11 +29,6 @@ var notInCommunityMeta = v1.ObjectMeta{
 	},
 }
 
-type NodeWithNoLabel struct {
-	update UpdateNodeFunc
-	list   ListNodeFunc
-}
-
 func updateNode(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (*corev1.Node, error) {
 	return &corev1.Node{
 		ObjectMeta: v1.ObjectMeta{
@@ -42,10 +36,6 @@ func updateNode(ctx context.Context, node *corev1.Node, opts v1.UpdateOptions) (
 			Labels: resultObjectMeta.Labels,
 		},
 	}, nil
-}
-
-func updateStatus(ctx context.Context, cc *eav1alpha1.CommunityConfiguration, opts v1.UpdateOptions) (*eav1alpha1.CommunityConfiguration, error) {
-	return cc, nil
 }
 
 func listNodeWithNoLabel(selector labels.Selector) (ret []*corev1.Node, err error) {

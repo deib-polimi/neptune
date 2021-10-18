@@ -9,6 +9,8 @@ import (
 	"github.com/asecurityteam/rolling"
 )
 
+// Deprecated: The whole package is deprecated.
+
 // ExposedMetrics is a struct that wraps the exposed metrics
 type ExposedMetrics struct {
 	ResponseTime float64 `json:"response-time"`

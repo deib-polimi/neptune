@@ -49,7 +49,7 @@ type SystemController struct {
 	communityUpdater *CommunityUpdater
 
 	// delayClient retrieves the delay matrix
-	delayClient *delayclient.SQLDelayClient
+	delayClient delayclient.DelayClient
 
 	listers informers.Listers
 
@@ -75,7 +75,7 @@ func NewController(
 	informers informers.Informers,
 	communityUpdater *CommunityUpdater,
 	communityGetter slpaClient.ClientCommunityGetter,
-	delayClient *delayclient.SQLDelayClient,
+	delayClient delayclient.DelayClient,
 ) *SystemController {
 
 	// Create event broadcaster
@@ -154,18 +154,13 @@ func (c *SystemController) runStandardWorker() {
 	}
 }
 
+func (c *SystemController) runPerformanceDegradationObserver() {
+}
+
 // handles standard partitioning (e.g. first partioning and cache sync)
 func (c *SystemController) runSyncSchedulesWorker() {
 	for c.syncSchedulesWorkqueue.ProcessNextItem(c.syncCommunitySchedules) {
 	}
-}
-
-// control loop to handle performance degradation inside communities
-func (c *SystemController) runPerformanceDegradationObserver() {
-}
-
-// control loop to handle cluster topology changes
-func (c *SystemController) runTopologyObserver() {
 }
 
 // Shutdown is called when the controller has finished its work

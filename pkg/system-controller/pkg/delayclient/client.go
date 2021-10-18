@@ -2,6 +2,7 @@ package delayclient
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"k8s.io/klog/v2"

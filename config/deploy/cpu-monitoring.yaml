@@ -23,10 +23,10 @@ spec:
           image: systemautoscaler/cpu-monitoring:dev
           imagePullPolicy: Always
           env:
-            - name: NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

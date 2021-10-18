@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,8 +28,8 @@ import (
 const (
 	// EmptyNodeListError is the default error message when grouping cluster nodes
 	EmptyNodeListError  string = "there are no or too few ready nodes for building communities"
-	ComControllerCpu           = 200
-	ComControllerMemory        = 200000000
+	ComControllerCpu    int64  = 200
+	ComControllerMemory int64  = 200000000
 )
 
 // TODO: better error handling
@@ -368,7 +369,7 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 
 func diff(expected, actual []string) (createSet, deleteSet []string) {
 
-	actualMap := make(map[string]bool, 0)
+	actualMap := make(map[string]bool)
 
 	deleteSet = make([]string, 0)
 	createSet = make([]string, 0)
@@ -385,7 +386,7 @@ func diff(expected, actual []string) (createSet, deleteSet []string) {
 		}
 	}
 
-	for e, _ := range actualMap {
+	for e := range actualMap {
 		deleteSet = append(deleteSet, e)
 	}
 
