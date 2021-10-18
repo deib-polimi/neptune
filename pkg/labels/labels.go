@@ -33,12 +33,13 @@ const (
 	NodeLabel string = "edgeautoscaler.polimi.it/node"
 
 	// Nodes labels
-	GpuLabel       string = "edgeautoscaler.polimi.it/gpu"
-	GpuMemoryLabel string = "edgeautoscaler.polimi.it/gpu-memory"
+	GpuNodeLabel       string = "edgeautoscaler.polimi.it/gpu"
+	GpuNodeMemoryLabel string = "edgeautoscaler.polimi.it/gpu-memory"
 
 	// Functions labels
 	GpuFunctionLabel       string = "edgeautoscaler.polimi.it/gpu-function"
 	GpuFunctionMemoryLabel string = "edgeautoscaler.polimi.it/gpu-function-memory"
+	GpuFunctionVGPU        string = "k8s.amazonaws.com/vgpu"
 	FunctionMaxDelayLabel  string = "edgeautoscaler.polimi.it/function-max-delay"
 
 	// WorkerLabel is used to mark nodes as workers

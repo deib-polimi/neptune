@@ -43,6 +43,6 @@ clean:
 dev:
 	echo "Building dev release"; \
 	$(BUILD_SETTINGS) go build -trimpath -o "$(IMAGE)" ./main.go; \
-	docker build -t $(REPO)/$(IMAGE):dev . ;\
-	docker push $(REPO)/$(IMAGE):dev ; \
+	docker build -t $(REPO)/$(IMAGE):dev.1 . ;\
+	docker push $(REPO)/$(IMAGE):dev.1 ; \
 	echo "Dev release built and pushed"; \

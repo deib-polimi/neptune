@@ -70,7 +70,7 @@ func TestNewSchedulingInput(t *testing.T) {
 
 			pods := make([]*corev1.Pod, 0)
 
-			result, err := NewSchedulingInput("", "",nodes, functions, pods, nil)
+			result, err := NewSchedulingInput("", "", nodes, functions, pods, nil, nil)
 			if err != nil {
 				require.True(t, tt.expectError)
 			} else {
@@ -130,7 +130,7 @@ func TestSchedule(t *testing.T) {
 
 			pods := make([]*corev1.Pod, 0)
 
-			result, err := NewSchedulingInput("", "", nodes, functions, pods,  nil)
+			result, err := NewSchedulingInput("", "", nodes, functions, pods, nil, nil)
 
 			if err != nil {
 				require.True(t, tt.expectError)
@@ -233,13 +233,17 @@ func newRandomFakeFunction(randomSeed int) *openfaasv1.Function {
 			Name:      strconv.Itoa(randomSeed),
 			Namespace: strconv.Itoa(randomSeed),
 			Labels: map[string]string{
-				ealabels.GpuLabel:              "true",
-				ealabels.GpuMemoryLabel:        "10000",
-				ealabels.GpuFunctionLabel:      "gpu-function",
-				ealabels.FunctionMaxDelayLabel: "1000",
+				ealabels.GpuFunctionLabel: "",
 			},
 		},
 		Spec: openfaasv1.FunctionSpec{
+			Labels: &map[string]string{
+				ealabels.GpuNodeLabel:           "true",
+				ealabels.GpuNodeMemoryLabel:     "10000",
+				ealabels.FunctionMaxDelayLabel:  "1000",
+				ealabels.GpuFunctionMemoryLabel: "100",
+				ealabels.GpuFunctionVGPU:        "1",
+			},
 			Limits: &openfaasv1.FunctionResources{
 				Memory: strconv.Itoa(randomSeed),
 				CPU:    strconv.Itoa(randomSeed),

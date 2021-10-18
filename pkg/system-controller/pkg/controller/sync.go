@@ -291,6 +291,8 @@ func NewCommunitySchedule(namespace, name string, conf *eav1alpha1.CommunityConf
 		Spec: eav1alpha1.CommunityScheduleSpec{
 			CpuRoutingRules:  make(eav1alpha1.CommunitySourceRoutingRule),
 			CpuAllocations:   make(eav1alpha1.CommunityFunctionAllocation),
+			GpuRoutingRules:  make(eav1alpha1.CommunitySourceRoutingRule),
+			GpuAllocations:   make(eav1alpha1.CommunityFunctionAllocation),
 			AlgorithmService: "http://allocation-algorithm.default.svc.cluster.local:5000",
 		},
 	}
@@ -330,7 +332,7 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: map[string]string{
-						"node-role.kubernetes.io/master": "",
+						"node-role.kubernetes.io/master": "true",
 					},
 					Containers: []corev1.Container{
 						{

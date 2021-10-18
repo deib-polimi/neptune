@@ -21,16 +21,17 @@ import (
 )
 
 type SchedulingInput struct {
-	NodeNames         []string                               `json:"node_names"`
-	GpuNodeNames      []string                               `json:"gpu_node_names"`
-	FunctionNames     []string                               `json:"function_names"`
-	GpuFunctionNames  []string                               `json:"gpu_function_names"`
-	NodeCores         []int64                                `json:"node_cores"`
-	NodeMemories      []int64                                `json:"node_memories"`
-	GpuNodeMemories   []int64                                `json:"gpu_node_memories"`
-	FunctionMemories  []int64                                `json:"function_memories"`
-	FunctionMaxDelays []int64                                `json:"function_max_delays"`
-	ActualAllocation  eav1alpha1.CommunityFunctionAllocation `json:"actual_allocations"`
+	NodeNames           []string                               `json:"node_names"`
+	GpuNodeNames        []string                               `json:"gpu_node_names"`
+	FunctionNames       []string                               `json:"function_names"`
+	GpuFunctionNames    []string                               `json:"gpu_function_names"`
+	NodeCores           []int64                                `json:"node_cores"`
+	NodeMemories        []int64                                `json:"node_memories"`
+	GpuNodeMemories     []int64                                `json:"gpu_node_memories"`
+	FunctionMemories    []int64                                `json:"function_memories"`
+	FunctionMaxDelays   []int64                                `json:"function_max_delays"`
+	ActualCPUAllocation eav1alpha1.CommunityFunctionAllocation `json:"actual_cpu_allocations"`
+	ActualGPUAllocation eav1alpha1.CommunityFunctionAllocation `json:"actual_gpu_allocations"`
 }
 
 const (
@@ -59,7 +60,8 @@ func NewSchedulingInput(
 	nodes []*corev1.Node,
 	functions []*openfaasv1.Function,
 	pods []*corev1.Pod,
-	actualAllocation eav1alpha1.CommunityFunctionAllocation,
+	actualCPUAllocation eav1alpha1.CommunityFunctionAllocation,
+	actualGPUAllocation eav1alpha1.CommunityFunctionAllocation,
 ) (*SchedulingInput, error) {
 
 	// Check input dimensionality
@@ -85,11 +87,10 @@ func NewSchedulingInput(
 	})
 
 	nodeNames := make([]string, nNodes)
-	gpuNodeNames := make([]string, 0)
+	gpuNodeNames := []string{}
 	for i, node := range nodes {
 		nodeNames[i] = node.Name
-		_, ok := node.Labels[ealabels.GpuLabel]
-		if ok {
+		if _, ok := node.Labels[ealabels.GpuNodeLabel]; ok {
 			gpuNodeNames = append(gpuNodeNames, node.Name)
 		}
 	}
@@ -124,8 +125,8 @@ func NewSchedulingInput(
 				}
 			}
 		}
-		value, ok := node.Labels[ealabels.GpuMemoryLabel]
-		if ok {
+
+		if value, ok := node.Labels[ealabels.GpuNodeMemoryLabel]; ok {
 			memory, err := resource.ParseQuantity(value)
 			if err != nil {
 				klog.Errorf("can not parse value %s as gpu memory (int value) with error %s", value, err)
@@ -142,8 +143,7 @@ func NewSchedulingInput(
 			return nil, err
 		}
 		functionNames[i] = key
-		_, ok := function.Labels[ealabels.GpuFunctionLabel]
-		if ok {
+		if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok {
 			gpuFunctionNames = append(gpuFunctionNames, key)
 		}
 	}
@@ -153,6 +153,7 @@ func NewSchedulingInput(
 	for i, function := range functions {
 		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
+			klog.Errorf("can not parse value %s as memory (int value) with error %s", function.Spec.Requests.Memory, err)
 			return nil, err
 		}
 		memory := memoryQuantity.Value() + HttpMetricsMemory
@@ -161,27 +162,29 @@ func NewSchedulingInput(
 
 	functionMaxDelays := make([]int64, 0)
 	for _, function := range functions {
-		value, ok := function.Labels[ealabels.FunctionMaxDelayLabel]
+		value, ok := (*function.Spec.Labels)[ealabels.FunctionMaxDelayLabel]
 		if ok {
 			maxDelay, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				klog.Fatalf("can not parse value %s as gpu max delay (int value) with error %s", value, err)
+				klog.Errorf("can not parse value %s as gpu max delay (int value) with error %s", value, err)
+				return nil, err
 			}
 			functionMaxDelays = append(functionMaxDelays, maxDelay)
 		}
 	}
 
 	return &SchedulingInput{
-		NodeNames:         nodeNames,
-		GpuNodeNames:      gpuNodeNames,
-		NodeMemories:      nodeMemories,
-		GpuNodeMemories:   gpuNodeMemories,
-		FunctionNames:     functionNames,
-		GpuFunctionNames:  gpuFunctionNames,
-		FunctionMemories:  functionMemories,
-		FunctionMaxDelays: functionMaxDelays,
-		NodeCores:         nodeCores,
-		ActualAllocation:  actualAllocation,
+		NodeNames:           nodeNames,
+		GpuNodeNames:        gpuNodeNames,
+		NodeMemories:        nodeMemories,
+		GpuNodeMemories:     gpuNodeMemories,
+		FunctionNames:       functionNames,
+		GpuFunctionNames:    gpuFunctionNames,
+		FunctionMemories:    functionMemories,
+		FunctionMaxDelays:   functionMaxDelays,
+		NodeCores:           nodeCores,
+		ActualCPUAllocation: actualCPUAllocation,
+		ActualGPUAllocation: actualGPUAllocation,
 	}, nil
 }
 
