@@ -15,9 +15,9 @@ import (
 )
 
 type ResourceGetter struct {
-	pods      func(namespace string) corelisters.PodNamespaceLister
-	functions func(namespace string) openfaaslisters.FunctionNamespaceLister
-	nodes     corelisters.NodeLister
+	Pods      func(namespace string) corelisters.PodNamespaceLister
+	Functions func(namespace string) openfaaslisters.FunctionNamespaceLister
+	Nodes     corelisters.NodeLister
 }
 
 func NewResourceGetter(
@@ -26,9 +26,9 @@ func NewResourceGetter(
 	nodes corelisters.NodeLister,
 ) *ResourceGetter {
 	return &ResourceGetter{
-		pods:      pods,
-		functions: functions,
-		nodes:     nodes,
+		Pods:      pods,
+		Functions: functions,
+		Nodes:     nodes,
 	}
 }
 
@@ -40,7 +40,7 @@ func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, 
 			ealabels.FunctionNameLabel:      function.Name,
 			ealabels.NodeLabel:              nodeName,
 		})
-	return r.pods(function.Namespace).List(selector)
+	return r.Pods(function.Namespace).List(selector)
 }
 
 func (r *ResourceGetter) GetNodeDelays(client delayclient.DelayClient, nodes []string) ([][]int64, error) {
@@ -74,13 +74,13 @@ func (r *ResourceGetter) GetWorkload(community, communityNamespace string) ([][]
 		map[string]string{
 			ealabels.CommunityLabel.WithNamespace(communityNamespace).String(): community,
 		})
-	nodes, err := r.nodes.List(nodeSelector)
+	nodes, err := r.Nodes.List(nodeSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve nodes using selector %s with error: %s", nodeSelector, err)
 	}
 
 	// Retrieve the functions
-	functions, err := r.functions(communityNamespace).List(labels.Everything())
+	functions, err := r.Functions(communityNamespace).List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}
@@ -96,7 +96,7 @@ func (r *ResourceGetter) GetWorkload(community, communityNamespace string) ([][]
 func (r *ResourceGetter) GetMaxDelays(communityNamespace string) ([]int64, error) {
 
 	// Retrieve the functions
-	functions, err := r.functions(communityNamespace).List(labels.Everything())
+	functions, err := r.Functions(communityNamespace).List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve functions with error: %s", err)
 	}

@@ -70,7 +70,7 @@ func TestNewSchedulingInput(t *testing.T) {
 
 			pods := make([]*corev1.Pod, 0)
 
-			result, err := NewSchedulingInput(nodes, functions, pods)
+			result, err := NewSchedulingInput("", "",nodes, functions, pods, nil)
 			if err != nil {
 				require.True(t, tt.expectError)
 			} else {
@@ -130,7 +130,7 @@ func TestSchedule(t *testing.T) {
 
 			pods := make([]*corev1.Pod, 0)
 
-			result, err := NewSchedulingInput(nodes, functions, pods)
+			result, err := NewSchedulingInput("", "", nodes, functions, pods,  nil)
 
 			if err != nil {
 				require.True(t, tt.expectError)

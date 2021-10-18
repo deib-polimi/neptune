@@ -83,7 +83,7 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 			var ok bool
 
 			if node, ok = nodeMap[member.Name]; !ok {
-				utilruntime.HandleError(fmt.Errorf("Node %s not in node map", member.Name))
+				utilruntime.HandleError(fmt.Errorf("node %s not in node map", member.Name))
 				continue
 			}
 
@@ -98,7 +98,7 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 			_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("Error while updating Node %s: %s", member.Name, err))
+				utilruntime.HandleError(fmt.Errorf("error while updating Node %s: %s", member.Name, err))
 				return err
 			}
 
@@ -122,7 +122,7 @@ func (c *CommunityUpdater) UpdateCommunityNodes(namespace string, communities []
 		_, err := c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Error while deleting label from node Node %s: %s", node.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error while deleting label from node Node %s: %s", node.Name, err))
 			return err
 		}
 
@@ -141,14 +141,13 @@ func (c *CommunityUpdater) ClearNodesLabels(namespace string) error {
 	}
 
 	for _, node := range clusterNodes {
-		if _, ok := node.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()]; ok {
-			delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
-		}
+
+		delete(node.Labels, ealabels.CommunityLabel.WithNamespace(namespace).String())
 
 		_, err = c.updateNode(context.TODO(), node, v1.UpdateOptions{})
 
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Error while deleting label from node Node %s: %s", node.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error while deleting label from node Node %s: %s", node.Name, err))
 			return err
 		}
 	}

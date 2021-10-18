@@ -19,9 +19,12 @@ import (
 )
 
 const (
-	HttpMetricsPort   = 8080
-	HttpMetricsCpu    = 100
-	HttpMetricsMemory = 150000000
+	HttpMetricsImage   = "systemautoscaler/http-metrics"
+	HttpMetrics        = "http-metrics"
+	HttpMetricsVersion = "0.1.0"
+	HttpMetricsPort    = 8080
+	HttpMetricsCpu     = 100
+	HttpMetricsMemory  = 200000000
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -50,7 +53,12 @@ func (c *CommunityController) runScheduler(_ string) error {
 		return fmt.Errorf("failed to retrieve pods with error: %s", err)
 	}
 
-	input, err := NewSchedulingInput(nodes, functions, pods)
+	communitySchedule, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve community schedule with error: %s", err)
+	}
+
+	input, err := NewSchedulingInput(communitySchedule.Namespace, communitySchedule.Name, nodes, functions, pods, communitySchedule.Spec.Allocations)
 
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
@@ -294,7 +302,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				},
 				{
 					Name:  "http-metrics",
-					Image: "systemautoscaler/http-metrics:0.1.0",
+					Image: fmt.Sprintf("%s:%s", HttpMetricsImage, HttpMetricsVersion),
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
 					},

@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  labels:
+    name: orders
+  namespace: openfaas-fn
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 8000
+  selector:
+    edgeautoscaler.polimi.it/function-name: "orders"
+    edgeautoscaler.polimi.it/function-namespace: "openfaas-fn"
+  topologyKeys:
+    - "kubernetes.io/hostname"
+    - "*"
+

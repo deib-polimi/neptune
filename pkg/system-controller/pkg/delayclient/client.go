@@ -2,6 +2,7 @@ package delayclient
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lterrac/edge-autoscaler/pkg/db"
 	"k8s.io/klog/v2"
@@ -27,14 +28,14 @@ type SQLDelayClient struct {
 }
 
 // NewDelayClient creates a new DelayClient.
-func NewSQLDelayClient(opts db.Options) SQLDelayClient {
-	return SQLDelayClient{
+func NewSQLDelayClient(opts db.Options) *SQLDelayClient {
+	return &SQLDelayClient{
 		opts: opts,
 	}
 }
 
 // SetupDBConnection creates a new connection to the database using the provided options.
-func (c SQLDelayClient) SetupDBConnection() error {
+func (c *SQLDelayClient) SetupDBConnection() error {
 	var config *pgxpool.Config
 	var err error
 
@@ -54,11 +55,18 @@ func (c SQLDelayClient) SetupDBConnection() error {
 }
 
 // Stop closes the connection to the database.
-func (c SQLDelayClient) Stop() {
+func (c *SQLDelayClient) Stop() {
 	c.pool.Close()
 }
 
-func (c SQLDelayClient) GetDelays() ([]*NodeDelay, error) {
+func (c *SQLDelayClient) GetDelays() ([]*NodeDelay, error) {
+	if c.pool == nil {
+		klog.Infof("c.pool is nil")
+		err := c.SetupDBConnection()
+		if err != nil {
+			klog.Fatal(err)
+		}
+	}
 	rows, err := c.pool.Query(context.TODO(), DelayQuery)
 	if err != nil {
 		klog.Error(err)

@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carts-db
+  labels:
+    name: carts-db
+  namespace: openfaas-fn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: carts-db
+  template:
+    metadata:
+      labels:
+        name: carts-db
+    spec:
+      containers:
+      - name: carts-db
+        image: mongo
+        ports:
+        - name: mongo
+          containerPort: 27017
+        securityContext:
+          capabilities:
+            drop:
+              - all
+            add:
+              - CHOWN
+              - SETGID
+              - SETUID
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+        - mountPath: /data/db
+          name: cache-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+        - name: cache-volume
+          emptyDir: { }
+      nodeSelector:
+        beta.kubernetes.io/os: linux
