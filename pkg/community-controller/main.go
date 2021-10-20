@@ -83,7 +83,7 @@ func main() {
 	coreInformerFactory.Start(stopCh)
 	openfaasInformerFactory.Start(stopCh)
 
-	if err = communityController.Run(2, stopCh); err != nil {
+	if err = communityController.Run(1, stopCh); err != nil {
 		klog.Fatalf("Error running system controller: %s", err.Error())
 	}
 

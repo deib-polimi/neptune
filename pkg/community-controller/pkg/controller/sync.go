@@ -128,12 +128,31 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 	cpu_pods := []*corev1.Pod{}
 	gpu_pods := []*corev1.Pod{}
 
+	klog.Info("pods on node")
+
 	for _, p := range pods {
+		klog.Infof("pod %s", p.Name)
 		if _, ok := p.Labels[ealabels.GpuFunctionLabel]; ok {
 			gpu_pods = append(gpu_pods, p)
 		} else {
 			cpu_pods = append(cpu_pods, p)
 		}
+	}
+
+	for _, p := range cpu_pods {
+		klog.Infof("cpu pod %s", p.Name)
+	}
+
+	for _, a := range cs.Spec.CpuAllocations {
+		klog.Infof("cpu allocation %s", a)
+	}
+
+	for _, p := range gpu_pods {
+		klog.Infof("gpu pod %s", p.Name)
+	}
+
+	for _, a := range cs.Spec.GpuAllocations {
+		klog.Infof("gpu allocation %s", a)
 	}
 
 	err = c.sync(cs, gpu_pods, cs.Spec.GpuAllocations, true)
@@ -185,6 +204,10 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 		}
 	}
 
+	for _, pod := range deleteSet {
+		klog.Infof("deleting pod %s", pod.Name)
+	}
+
 	// Compute the pod creation set
 	// Pods which are correctly deployed are deleted from podsMap, in this way podsMap will contain only pods
 	// which should be deleted
@@ -214,7 +237,7 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 				}
 
 				var pod *corev1.Pod
-				if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok {
+				if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok && gpu {
 					pod = newGPUPod(function, cs, node)
 
 				} else {
@@ -225,6 +248,10 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 
 			}
 		}
+	}
+
+	for _, pod := range createSet {
+		klog.Infof("creating pod %s", pod.Name)
 	}
 
 	for _, nodes := range podsMap {
@@ -354,6 +381,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 // newGPUPod creates a new Pod for a Function resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Function resource that 'owns' it.
+// the bool is used to handle pod replicas running on CPU
 func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node *corev1.Node) *corev1.Pod {
 
 	envVars := makeEnvVars(function)
@@ -397,7 +425,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", function.Spec.Name, hash(8)),
+			Name:        fmt.Sprintf("%s-%s-gpu", function.Spec.Name, hash(8)),
 			Annotations: function.Annotations,
 			Namespace:   function.Namespace,
 			Labels: map[string]string{
@@ -405,6 +433,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				ealabels.FunctionNameLabel:                                   function.Name,
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
 				ealabels.NodeLabel:                                           node.Name,
+				ealabels.GpuFunctionLabel:                                    "",
 				"autoscaling":                                                "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
@@ -433,8 +462,8 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 					Name:  function.Spec.Name,
 					Image: function.Spec.Image,
 					Ports: []corev1.ContainerPort{
-						// default tensorflow serving REST api port si 8501
-						{ContainerPort: 8501, Protocol: corev1.ProtocolTCP},
+						// default tensorflow serving REST api port si 8080
+						{ContainerPort: 8080, Protocol: corev1.ProtocolTCP},
 					},
 					ImagePullPolicy: corev1.PullAlways,
 					Env:             envVars,
@@ -464,7 +493,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						},
 						{
 							Name:  "PORT",
-							Value: "8501",
+							Value: "8080",
 						},
 						{
 							Name:  "WINDOW_SIZE",

@@ -29,6 +29,7 @@ type SchedulingInput struct {
 	NodeMemories        []int64                                `json:"node_memories"`
 	GpuNodeMemories     []int64                                `json:"gpu_node_memories"`
 	FunctionMemories    []int64                                `json:"function_memories"`
+	GPUFunctionMemories []int64                                `json:"gpu_function_memories"`
 	FunctionMaxDelays   []int64                                `json:"function_max_delays"`
 	ActualCPUAllocation eav1alpha1.CommunityFunctionAllocation `json:"actual_cpu_allocations"`
 	ActualGPUAllocation eav1alpha1.CommunityFunctionAllocation `json:"actual_gpu_allocations"`
@@ -150,6 +151,7 @@ func NewSchedulingInput(
 
 	// For gpu it will not be like this
 	functionMemories := make([]int64, nFunctions)
+	gpuFunctionMemories := make([]int64, nFunctions)
 	for i, function := range functions {
 		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
@@ -158,6 +160,18 @@ func NewSchedulingInput(
 		}
 		memory := memoryQuantity.Value() + HttpMetricsMemory
 		functionMemories[i] = memory
+
+		if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok {
+
+			functionGPUMemory, err := resource.ParseQuantity((*function.Spec.Labels)[ealabels.GpuFunctionMemoryLabel])
+
+			if err != nil {
+				klog.Warningf("Function %s gpu memory parsing failed: %v",
+					function.Spec.Name, err)
+				return nil, err
+			}
+			gpuFunctionMemories[i] = functionGPUMemory.Value()
+		}
 	}
 
 	functionMaxDelays := make([]int64, 0)
@@ -181,6 +195,7 @@ func NewSchedulingInput(
 		FunctionNames:       functionNames,
 		GpuFunctionNames:    gpuFunctionNames,
 		FunctionMemories:    functionMemories,
+		GPUFunctionMemories: gpuFunctionMemories,
 		FunctionMaxDelays:   functionMaxDelays,
 		NodeCores:           nodeCores,
 		ActualCPUAllocation: actualCPUAllocation,

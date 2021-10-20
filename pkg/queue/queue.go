@@ -10,7 +10,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const(
+const (
 	MaxRequeues = 50
 )
 
@@ -21,6 +21,7 @@ type syncFunc func(key string) error
 // Queue is the wrapper of kuberentes workqueue implementation used by the controllers
 type Queue struct {
 	queue workqueue.RateLimitingInterface
+	next  interface{}
 }
 
 // NewQueue returns a new Queue
@@ -91,6 +92,7 @@ func (q *Queue) Enqueue(obj interface{}) {
 		utilruntime.HandleError(err)
 		return
 	}
+
 	q.queue.AddRateLimited(key)
 }
 
