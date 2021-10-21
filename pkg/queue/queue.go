@@ -21,7 +21,6 @@ type syncFunc func(key string) error
 // Queue is the wrapper of kuberentes workqueue implementation used by the controllers
 type Queue struct {
 	queue workqueue.RateLimitingInterface
-	next  interface{}
 }
 
 // NewQueue returns a new Queue

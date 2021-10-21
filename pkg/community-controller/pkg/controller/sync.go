@@ -128,31 +128,12 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 	cpu_pods := []*corev1.Pod{}
 	gpu_pods := []*corev1.Pod{}
 
-	klog.Info("pods on node")
-
 	for _, p := range pods {
-		klog.Infof("pod %s", p.Name)
 		if _, ok := p.Labels[ealabels.GpuFunctionLabel]; ok {
 			gpu_pods = append(gpu_pods, p)
 		} else {
 			cpu_pods = append(cpu_pods, p)
 		}
-	}
-
-	for _, p := range cpu_pods {
-		klog.Infof("cpu pod %s", p.Name)
-	}
-
-	for _, a := range cs.Spec.CpuAllocations {
-		klog.Infof("cpu allocation %s", a)
-	}
-
-	for _, p := range gpu_pods {
-		klog.Infof("gpu pod %s", p.Name)
-	}
-
-	for _, a := range cs.Spec.GpuAllocations {
-		klog.Infof("gpu allocation %s", a)
 	}
 
 	err = c.sync(cs, gpu_pods, cs.Spec.GpuAllocations, true)
@@ -193,7 +174,6 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
 
-					//TODO: the inner map should contain two pods at most in case of function with GPU
 					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
 						deleteSet = append(deleteSet, pod)
 					} else {
@@ -203,9 +183,8 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 			}
 		}
 	}
-
-	for _, pod := range deleteSet {
-		klog.Infof("deleting pod %s", pod.Name)
+	for _, pod := range createSet {
+		klog.Infof("creating pod %s", pod.Name)
 	}
 
 	// Compute the pod creation set
@@ -248,10 +227,6 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 
 			}
 		}
-	}
-
-	for _, pod := range createSet {
-		klog.Infof("creating pod %s", pod.Name)
 	}
 
 	for _, nodes := range podsMap {
