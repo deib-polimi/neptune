@@ -337,7 +337,7 @@ func NewCommunityController(namespace, name string, conf *eav1alpha1.CommunityCo
 					Containers: []corev1.Container{
 						{
 							Name:            "controller",
-							Image:           "systemautoscaler/community-controller:dev.1",
+							Image:           "systemautoscaler/community-controller:dev",
 							ImagePullPolicy: corev1.PullAlways,
 							Env: []corev1.EnvVar{
 								{
