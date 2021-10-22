@@ -151,7 +151,7 @@ func NewSchedulingInput(
 
 	// For gpu it will not be like this
 	functionMemories := make([]int64, nFunctions)
-	gpuFunctionMemories := make([]int64, nFunctions)
+	gpuFunctionMemories := make([]int64, len(gpuFunctionNames))
 	for i, function := range functions {
 		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
