@@ -108,14 +108,19 @@ func (s *scraper) scrape() {
 			total += c.Usage.Cpu().MilliValue()
 		}
 
-		namespace := p.Labels[ealabels.FunctionNamespaceLabel]
+		var function string
+		var ok bool
+
+		if function, ok = p.Labels[ealabels.FunctionNamespaceLabel]; !ok {
+			function = p.Name
+		}
 		// save to metrics database
 		s.resourceChan <- metrics.RawResourceData{
 			Timestamp: time.Now(),
 			Node:      s.node,
-			Function:  p.Labels[ealabels.FunctionNameLabel],
-			Namespace: namespace,
-			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()],
+			Function:  function,
+			Namespace: p.Namespace,
+			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(p.Namespace).String()],
 			Cores:     total,
 		}
 	}
