@@ -10,7 +10,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const(
+const (
 	MaxRequeues = 50
 )
 
@@ -91,6 +91,7 @@ func (q *Queue) Enqueue(obj interface{}) {
 		utilruntime.HandleError(err)
 		return
 	}
+
 	q.queue.AddRateLimited(key)
 }
 

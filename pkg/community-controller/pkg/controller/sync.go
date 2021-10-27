@@ -58,12 +58,11 @@ func (c *CommunityController) runScheduler(_ string) error {
 		return fmt.Errorf("failed to retrieve community schedule with error: %s", err)
 	}
 
-	input, err := NewSchedulingInput(communitySchedule.Namespace, communitySchedule.Name, nodes, functions, pods, communitySchedule.Spec.Allocations)
+	input, err := NewSchedulingInput(communitySchedule.Namespace, communitySchedule.Name, nodes, functions, pods, communitySchedule.Spec.CpuAllocations, communitySchedule.Spec.GpuAllocations)
 
 	if err != nil {
 		return fmt.Errorf("failed to create scheduling input with error: %s", err)
 	}
-
 	cs, err := c.listers.CommunitySchedules(c.communityNamespace).Get(c.communityName)
 	if err != nil {
 		return fmt.Errorf("failed to get communitySchedule %s/%s with error: %s", c.communityNamespace, c.communityName, err)
@@ -72,6 +71,7 @@ func (c *CommunityController) runScheduler(_ string) error {
 	scheduler := NewScheduler(cs.Spec.AlgorithmService)
 
 	output, err := scheduler.Schedule(input)
+
 	if err != nil {
 		return fmt.Errorf("failed to compute scheduling output with error: %s", err)
 	}
@@ -99,7 +99,6 @@ func (c *CommunityController) bind(pod *corev1.Pod, nodeName string) error {
 // syncCommunityScheduleAllocation ensures that pods serving a certain function are created
 // or deleted according to the community schedule allocation
 func (c *CommunityController) syncCommunityScheduleAllocation(key string) error {
-
 	klog.Infof("Syncing community schedule allocations %s", key)
 
 	// Convert the namespace/name string into a distinct namespace and name
@@ -115,11 +114,6 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		return err
 	}
 
-	functionKeys := cs.Spec.Allocations
-
-	deleteSet := make([]*corev1.Pod, 0)
-	createSet := make([]*corev1.Pod, 0)
-
 	// Retrieve the pods managed by a certain community
 	podSelector := labels.SelectorFromSet(
 		map[string]string{
@@ -130,6 +124,42 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 		klog.Errorf("can not list pod using selector %v, with error %v", podSelector, err)
 		return err
 	}
+
+	cpu_pods := []*corev1.Pod{}
+	gpu_pods := []*corev1.Pod{}
+
+	for _, p := range pods {
+		if _, ok := p.Labels[ealabels.GpuFunctionLabel]; ok {
+			gpu_pods = append(gpu_pods, p)
+		} else {
+			cpu_pods = append(cpu_pods, p)
+		}
+	}
+
+	err = c.sync(cs, gpu_pods, cs.Spec.GpuAllocations, true)
+
+	if err != nil {
+		return fmt.Errorf("failed to sync community schedule allocation for GPU pods with error: %s", err)
+	}
+
+	err = c.sync(cs, cpu_pods, cs.Spec.CpuAllocations, false)
+
+	if err != nil {
+		return fmt.Errorf("failed to sync community schedule allocation for CPU pods with error: %s", err)
+	}
+
+	return nil
+}
+
+// sync is used to sync both GPU and CPU pods. The switch strategy is determined with a bool since
+// most of the code is shared between the two procedures
+func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev1.Pod, functionKeys v1alpha1.CommunityFunctionAllocation, gpu bool) error {
+
+	var err error
+
+	// used to delete duplicated pods
+	deleteSet := make([]*corev1.Pod, 0)
+	createSet := make([]*corev1.Pod, 0)
 
 	// Find the pods that are correctly deployed
 	// Pods which are not correctly deployed are appended in the deleteSet
@@ -143,6 +173,7 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 					if _, ok := podsMap[fKey]; !ok {
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
+
 					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
 						deleteSet = append(deleteSet, pod)
 					} else {
@@ -151,6 +182,9 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 				}
 			}
 		}
+	}
+	for _, pod := range createSet {
+		klog.Infof("creating pod %s", pod.Name)
 	}
 
 	// Compute the pod creation set
@@ -167,14 +201,30 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 			klog.Errorf("can not retrieve function %s/%s, with error %v", fNamespace, fName, err)
 			return err
 		}
-		for node, ok := range nodes {
+		for nodeName, ok := range nodes {
 			if ok {
-				if _, ok := podsMap[functionKey][node]; ok {
-					delete(podsMap[functionKey], node)
-				} else {
-					pod := newPod(function, cs, node)
-					createSet = append(createSet, pod)
+				if _, ok := podsMap[functionKey][nodeName]; ok {
+					delete(podsMap[functionKey], nodeName)
+					continue
 				}
+
+				node, err := c.listers.NodeLister.Get(nodeName)
+
+				if err != nil {
+					klog.Errorf("can not retrieve node %s, with error %v", nodeName, err)
+					return err
+				}
+
+				var pod *corev1.Pod
+				if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok && gpu {
+					pod = newGPUPod(function, cs, node)
+
+				} else {
+					pod = newCPUPod(function, cs, nodeName)
+				}
+
+				createSet = append(createSet, pod)
+
 			}
 		}
 	}
@@ -210,10 +260,10 @@ func (c *CommunityController) syncCommunityScheduleAllocation(key string) error 
 	return nil
 }
 
-// newPod creates a new Pod for a Function resource. It also sets
+// newCPUPod creates a new Pod for a Function resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Function resource that 'owns' it.
-func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
+func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
 
 	envVars := makeEnvVars(function)
 
@@ -262,6 +312,151 @@ func newPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node 
 				{
 					Name:  "http-metrics",
 					Image: fmt.Sprintf("%s:%s", HttpMetricsImage, HttpMetricsVersion),
+					Ports: []corev1.ContainerPort{
+						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
+					},
+					ImagePullPolicy: corev1.PullAlways,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ADDRESS",
+							Value: "localhost",
+						},
+						{
+							Name:  "PORT",
+							Value: "8080",
+						},
+						{
+							Name:  "WINDOW_SIZE",
+							Value: "30s",
+						},
+						{
+							Name:  "WINDOW_GRANULARITY",
+							Value: "1ms",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
+						},
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
+							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return pod
+
+}
+
+// newGPUPod creates a new Pod for a Function resource. It also sets
+// the appropriate OwnerReferences on the resource so handleObject can discover
+// the Function resource that 'owns' it.
+// the bool is used to handle pod replicas running on CPU
+func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node *corev1.Node) *corev1.Pod {
+
+	envVars := makeEnvVars(function)
+
+	resources, err := makeResources(function)
+	if err != nil {
+		klog.Warningf("Function %s resources parsing failed: %v",
+			function.Spec.Name, err)
+	}
+
+	functionGPUMemory, err := resource.ParseQuantity((*function.Spec.Labels)[ealabels.GpuFunctionMemoryLabel])
+
+	if err != nil {
+		klog.Warningf("Function %s gpu memory parsing failed: %v",
+			function.Spec.Name, err)
+	}
+
+	nodeGPUMemory, err := resource.ParseQuantity(node.Labels[ealabels.GpuNodeMemoryLabel])
+
+	if err != nil {
+		klog.Warningf("Function %s gpu memory parsing failed: %v",
+			function.Spec.Name, err)
+	}
+
+	gpuMemoryFraction := float64(functionGPUMemory.Value()) / float64(nodeGPUMemory.Value())
+
+	if _, ok := (*function.Spec.Labels)[ealabels.GpuFunctionVGPU]; !ok {
+		klog.Warningf("Function %s has no virtual gpu set: %v",
+			function.Spec.Name, err)
+	}
+
+	vgpu, err := resource.ParseQuantity((*function.Spec.Labels)[ealabels.GpuFunctionVGPU])
+
+	if err != nil {
+		klog.Warningf("Function %s vgpu resources parsing failed: %v",
+			function.Spec.Name, err)
+	}
+
+	resources.Limits[corev1.ResourceName(ealabels.GpuFunctionVGPU)] = vgpu
+	resources.Requests[corev1.ResourceName(ealabels.GpuFunctionVGPU)] = vgpu
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        fmt.Sprintf("%s-%s-gpu", function.Spec.Name, hash(8)),
+			Annotations: function.Annotations,
+			Namespace:   function.Namespace,
+			Labels: map[string]string{
+				ealabels.FunctionNamespaceLabel:                              function.Namespace,
+				ealabels.FunctionNameLabel:                                   function.Name,
+				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
+				ealabels.NodeLabel:                                           node.Name,
+				ealabels.GpuFunctionLabel:                                    "",
+				"autoscaling":                                                "vertical",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(function, schema.GroupVersionKind{
+					Group:   openfaasv1.SchemeGroupVersion.Group,
+					Version: openfaasv1.SchemeGroupVersion.Version,
+					Kind:    "Function",
+				}),
+			},
+		},
+		Spec: corev1.PodSpec{
+			SchedulerName: "edge-autoscaler",
+			HostIPC:       true,
+			Volumes: []corev1.Volume{
+				{
+					Name: "nvidia-mps",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/tmp/nvidia-mps",
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:  function.Spec.Name,
+					Image: function.Spec.Image,
+					Ports: []corev1.ContainerPort{
+						// default tensorflow serving REST api port si 8080
+						{ContainerPort: 8080, Protocol: corev1.ProtocolTCP},
+					},
+					ImagePullPolicy: corev1.PullAlways,
+					Env:             envVars,
+					Resources:       *resources,
+					Args:            []string{fmt.Sprintf("--per_process_gpu_memory_fraction=%.2f", gpuMemoryFraction)},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "nvidia-mps",
+							MountPath: "/tmp/nvidia-mps",
+						},
+					},
+					// TODO: add probe with Function Factory
+					//LivenessProbe:   probes.Liveness,
+					//ReadinessProbe:  probes.Readiness,
+				},
+				{
+					Name:  "http-metrics",
+					Image: "systemautoscaler/http-metrics:0.1.0",
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
 					},

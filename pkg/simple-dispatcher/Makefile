@@ -1,5 +1,5 @@
 BUILD_SETTINGS = CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-IMAGE = function-deployment-webhook
+IMAGE = simple-dispatcher
 IMAGE_VERSION = $(shell git tag --points-at HEAD | sed '/$(IMAGE)\/.*/!s/.*//' | sed 's/\//:/')
 REPO = systemautoscaler
 
@@ -26,8 +26,8 @@ coverage: test
 release:
 	@if [ -n "$(IMAGE_VERSION)" ]; then \
 		echo "Building $(IMAGE_VERSION)" ;\
-		sudo docker build -t $(REPO)/$(IMAGE):(IMAGE_VERSION) . ;\
-		sudo docker push $(REPO)/$(IMAGE):$(IMAGE_VERSION) ;\
+		docker build -t $(REPO)/$(IMAGE_VERSION) . ;\
+		docker push $(REPO)/$(IMAGE_VERSION) ;\
 	else \
 		echo "$(IMAGE) unchanged: no version tag on HEAD commit" ;\
 	fi
@@ -43,6 +43,6 @@ clean:
 dev:
 	echo "Building dev release"; \
 	$(BUILD_SETTINGS) go build -trimpath -o "$(IMAGE)" ./main.go; \
-	sudo docker build -t $(REPO)/$(IMAGE):dev . ;\
-	sudo docker push $(REPO)/$(IMAGE):dev ; \
+	docker build -t $(REPO)/$(IMAGE):dev . ;\
+	docker push $(REPO)/$(IMAGE):dev ; \
 	echo "Dev release built and pushed"; \

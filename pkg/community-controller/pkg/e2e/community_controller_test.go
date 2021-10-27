@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"net/http"
-	"time"
 
 	eav1alpha1 "github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	. "github.com/onsi/ginkgo"
@@ -61,8 +62,10 @@ var cs = &eav1alpha1.CommunitySchedule{
 	},
 	Spec: eav1alpha1.CommunityScheduleSpec{
 		AlgorithmService: "http://localhost:12345/",
-		Allocations:      map[string]eav1alpha1.CommunityNodeAllocation{},
-		RoutingRules:     map[string]eav1alpha1.CommunityFunctionRoutingRule{},
+		CpuAllocations:   map[string]eav1alpha1.CommunityNodeAllocation{},
+		CpuRoutingRules:  map[string]eav1alpha1.CommunityFunctionRoutingRule{},
+		GpuAllocations:   map[string]eav1alpha1.CommunityNodeAllocation{},
+		GpuRoutingRules:  map[string]eav1alpha1.CommunityFunctionRoutingRule{},
 	},
 }
 
@@ -78,7 +81,7 @@ var _ = Describe("Community Controller", func() {
 				if err != nil {
 					return false
 				} else {
-					return updatedCS.Spec.RoutingRules != nil
+					return updatedCS.Spec.CpuRoutingRules != nil
 				}
 			}, 2*timeout, interval).Should(BeTrue())
 		})
@@ -89,7 +92,7 @@ var _ = Describe("Community Controller", func() {
 				if err != nil {
 					return false
 				} else {
-					return updatedCS.Spec.Allocations != nil
+					return updatedCS.Spec.CpuAllocations != nil
 				}
 			}, 2*timeout, interval).Should(BeTrue())
 		})
@@ -104,7 +107,7 @@ var _ = Describe("Community Controller", func() {
 				updatedCS, err := eaClient.EdgeautoscalerV1alpha1().CommunitySchedules(communityNamespace).Get(ctx, communityName, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
-				for functionKey, nodes := range updatedCS.Spec.Allocations {
+				for functionKey, nodes := range updatedCS.Spec.CpuAllocations {
 					functionNamespace, functionName, err := cache.SplitMetaNamespaceKey(functionKey)
 					Expect(err).ToNot(HaveOccurred())
 					for node, ok := range nodes {
@@ -175,10 +178,10 @@ func newFakeSchedulerServer() {
 		}
 
 		output := &controller.SchedulingOutput{
-			NodeNames:     input.NodeNames,
-			FunctionNames: input.FunctionNames,
-			RoutingRules:  routingRules,
-			Allocations:   allocations,
+			NodeNames:       input.NodeNames,
+			FunctionNames:   input.FunctionNames,
+			CpuRoutingRules: routingRules,
+			CpuAllocations:  allocations,
 		}
 
 		resp, err := json.Marshal(output)

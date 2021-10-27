@@ -21,6 +21,7 @@ pkg/*/system-controller
 pkg/*/edge-scheduler
 pkg/*/function-deployment-webhook
 pkg/*/cpu-monitoring
+pkg/*/simple-dispatcher
 
 .idea/
 *.pem

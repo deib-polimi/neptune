@@ -57,7 +57,7 @@ spec:
       serviceAccountName: sa-monitoring
       containers:
         - name: monitoring
-          image: systemautoscaler/system-autoscaler-monitoring:dev.1
+          image: systemautoscaler/system-autoscaler-monitoring:dev
           imagePullPolicy: Always
         - name: cpu-monitoring
           image: systemautoscaler/cpu-monitoring:dev

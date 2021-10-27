@@ -92,8 +92,10 @@ type CommunitySchedule struct {
 
 // CommunityScheduleSpec is the spec for a CommunitySchedule
 type CommunityScheduleSpec struct {
-	RoutingRules     CommunitySourceRoutingRule  `json:"routing-rules"`
-	Allocations      CommunityFunctionAllocation `json:"allocations"`
+	CpuRoutingRules  CommunitySourceRoutingRule  `json:"cpu-routing-rules"`
+	CpuAllocations   CommunityFunctionAllocation `json:"cpu-allocations"`
+	GpuRoutingRules  CommunitySourceRoutingRule  `json:"gpu-routing-rules"`
+	GpuAllocations   CommunityFunctionAllocation `json:"gpu-allocations"`
 	AlgorithmService string                      `json:"algorithm-service"`
 }
 

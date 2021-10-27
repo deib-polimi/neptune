@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer"
 	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/balancer/queue"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
@@ -58,20 +59,26 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 	klog.Infof("syncing community schedule %s/%s", namespace, name)
 
 	// retrieve routing rules
-	sourceRules := cs.Spec.RoutingRules
+	cpuRules := cs.Spec.CpuRoutingRules
+	gpuRules := cs.Spec.GpuRoutingRules
 
+	c.syncRoutingRules(cpuRules, node.Name, community, false)
+	c.syncRoutingRules(gpuRules, node.Name, community, true)
+
+	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	return nil
+}
+
+func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.CommunitySourceRoutingRule, nodeName, community string, gpu bool) {
 	for source, functionRules := range sourceRules {
-		if source != node.Name {
+		if source != nodeName {
 			continue
 		}
 
 		klog.Infof("source node %s\n", source)
 
-		functions := []string{}
-
 		for functionNamespaceName, destinationRules := range functionRules {
 
-			functions = append(functions, functionNamespaceName)
 			funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
 
 			if err != nil {
@@ -142,7 +149,7 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 					// sync load balancer backends with the new weights
 					if !lb.ServerExists(destinationURL) {
 						// TODO: add mechanism to detect gpu instead of a hardcoded false bool
-						lb.AddServer(destinationURL, destination, false, &workload, func(req *queue.HTTPRequest) {})
+						lb.AddServer(destinationURL, destination, gpu, &workload, func(req *queue.HTTPRequest) {})
 					} else {
 						lb.UpdateWorkload(destinationURL, &workload)
 					}
@@ -157,20 +164,8 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 			for _, b := range deleteSet {
 				lb.DeleteServer(b)
 			}
-
-			// c.backendChan <- monitoring.BackendList{
-			// 	FunctionURL: functionNamespaceName,
-			// 	Backends:    actualBackends,
-			// }
 		}
-
-		// c.functionChan <- monitoring.FunctionList{
-		// 	Functions: functions,
-		// }
 	}
-
-	c.recorder.Event(cs, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
-	return nil
 }
 
 func isPodReady(pod *corev1.Pod) bool {
