@@ -33,13 +33,18 @@ func NewResourceGetter(
 }
 
 // GetPodsOfFunctionInNode returns a list of pods which is related to a given function and are running in a given node
-func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string) ([]*corev1.Pod, error) {
-	selector := labels.SelectorFromSet(
-		map[string]string{
-			ealabels.FunctionNamespaceLabel: function.Namespace,
-			ealabels.FunctionNameLabel:      function.Name,
-			ealabels.NodeLabel:              nodeName,
-		})
+func (r *ResourceGetter) GetPodsOfFunctionInNode(function *openfaasv1.Function, nodeName string, gpu bool) ([]*corev1.Pod, error) {
+	labelMap := map[string]string{
+		ealabels.FunctionNamespaceLabel: function.Namespace,
+		ealabels.FunctionNameLabel:      function.Name,
+		ealabels.NodeLabel:              nodeName,
+	}
+
+	if gpu {
+		labelMap[ealabels.GpuFunctionLabel] = ""
+	}
+
+	selector := labels.SelectorFromSet(labelMap)
 	return r.Pods(function.Namespace).List(selector)
 }
 
