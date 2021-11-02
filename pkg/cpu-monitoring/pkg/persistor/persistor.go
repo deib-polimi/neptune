@@ -23,7 +23,7 @@ var (
 
 const (
 	// InsertMetricQuery is the prepare statement for inserting metrics.
-	InsertMetricQuery = "INSERT INTO resource (timestamp, node, function, namespace, community, cores) VALUES ($1, $2, $3, $4, $5, $6);"
+	InsertMetricQuery = "INSERT INTO resource (timestamp, node, function, namespace, community, cores, requests, limits) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);"
 	batchSize         = 10000
 	table             = "resource"
 )
