@@ -13,33 +13,32 @@ import (
 	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	tcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 	"k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 )
 
 type Scraper interface {
 	// start scraping CPU usage of pods running on the node
-	Start(stopCh <-chan struct{}) error
+	Start(stopCh <-chan struct{}, hasSynced cache.InformerSynced) error
 	Stop()
 }
 
 // by default the scraping strategy polls every pod
 // running in the node using the fieldSelector
 type defaultScraper struct {
-	pods         func(namespace string) tcorev1.PodInterface
+	pods         func(selector labels.Selector) ([]*corev1.Pod, error)
 	metrics      v1beta1.MetricsV1beta1Interface
 	persistor    persistor.Persistor
 	resourceChan chan metrics.RawResourceData
-	node         string
 }
 
 // DefaultScraper scrapes all pods running on the node
-func DefaultScraper(pods func(namespace string) tcorev1.PodInterface, metricsClient v1beta1.MetricsV1beta1Interface, node *corev1.Node) (Scraper, error) {
-	resourceChan := make(chan metrics.RawResourceData, 100)
+func DefaultScraper(pods func(selector labels.Selector) ([]*corev1.Pod, error), metricsClient v1beta1.MetricsV1beta1Interface) (Scraper, error) {
+	resourceChan := make(chan metrics.RawResourceData, 1000)
 	persistor := persistor.NewResourcePersistor(db.NewDBOptions(), resourceChan)
 
 	err := persistor.SetupDBConnection()
@@ -53,11 +52,19 @@ func DefaultScraper(pods func(namespace string) tcorev1.PodInterface, metricsCli
 		metrics:      metricsClient,
 		persistor:    persistor,
 		resourceChan: resourceChan,
-		node:         node.Name,
 	}, nil
 }
 
-func (s *defaultScraper) Start(stopCh <-chan struct{}) error {
+func (s *defaultScraper) Start(stopCh <-chan struct{}, hasSynced cache.InformerSynced) error {
+	klog.Info("wait for cache to sync")
+
+	if ok := cache.WaitForCacheSync(
+		stopCh,
+		hasSynced,
+	); !ok {
+		return fmt.Errorf("failed to wait for caches to sync")
+	}
+
 	go s.persistor.Persist()
 
 	klog.Info("start cpu scraping")
@@ -73,24 +80,24 @@ func (s *defaultScraper) Stop() {
 }
 
 func (s *defaultScraper) scrape() {
-	pods, err := s.pods(corev1.NamespaceAll).List(context.TODO(), metav1.ListOptions{
-		FieldSelector: fields.SelectorFromSet(map[string]string{
-			"spec.nodeName": s.node,
-		}).String(),
-	})
+	pods, err := s.pods(labels.Everything())
 
-	klog.Infof("scraping %d pods", len(pods.Items))
+	klog.Infof("scraping %d pods", len(pods))
 
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to retrieve pods in node %v: %v", s.node, err))
+		klog.Errorf("failed to list pods: %v", err)
 		return
 	}
 
-	var total int64
+	var totalCores int64
+	var totalRequests int64
+	var totalLimits int64
 
-	for _, p := range pods.Items {
+	for _, p := range pods {
 
-		total = 0
+		totalCores = 0
+		totalRequests = 0
+		totalLimits = 0
 
 		m, err := s.metrics.PodMetricses(p.Namespace).Get(context.TODO(), p.Name, metav1.GetOptions{})
 
@@ -107,19 +114,35 @@ func (s *defaultScraper) scrape() {
 				continue
 			}
 
+			for _, pc := range p.Spec.Containers {
+				if pc.Name != c.Name {
+					continue
+				}
+
+				r, rExists := pc.Resources.Requests[corev1.ResourceCPU]
+				l, lExists := pc.Resources.Limits[corev1.ResourceCPU]
+
+				if rExists && lExists {
+					totalRequests += r.MilliValue()
+					totalLimits += l.MilliValue()
+				}
+			}
+
 			klog.Infof("container %v usage cpu %v", c.Name, c.Usage.Cpu().MilliValue())
-			total += c.Usage.Cpu().MilliValue()
+			totalCores += c.Usage.Cpu().MilliValue()
 		}
 
 		namespace := p.Labels[ealabels.FunctionNamespaceLabel]
 		// save to metrics database
 		s.resourceChan <- metrics.RawResourceData{
 			Timestamp: time.Now(),
-			Node:      s.node,
+			Node:      p.Spec.NodeName,
 			Function:  p.Labels[ealabels.FunctionNameLabel],
 			Namespace: namespace,
 			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()],
-			Cores:     total,
+			Cores:     totalCores,
+			Requests:  totalRequests,
+			Limits:    totalLimits,
 		}
 	}
 }
