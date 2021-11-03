@@ -69,7 +69,6 @@ func (s *defaultScraper) Start(stopCh <-chan struct{}, hasSynced cache.InformerS
 
 	klog.Info("start cpu scraping")
 
-	// TODO tune the frequency
 	go wait.Until(s.scrape, 5*time.Second, stopCh)
 
 	return nil
