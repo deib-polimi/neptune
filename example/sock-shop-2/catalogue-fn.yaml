@@ -12,7 +12,8 @@ spec:
   image: systemautoscaler/catalogue:dev
   limits:
     cpu: "50m"
-    memory: "500Mi"
+    memory: "100Mi"
   requests:
     cpu: "50m"
-    memory: "500Mi"
+    memory: "100Mi"
+
