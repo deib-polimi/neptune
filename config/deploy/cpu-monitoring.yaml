@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: cpu-monitoring
   namespace: kube-system
@@ -9,24 +9,20 @@ spec:
   selector:
     matchLabels:
       app: cpu-monitoring
+  replicas: 1
   template:
     metadata:
       labels:
         app: cpu-monitoring
     spec:
       nodeSelector:
-        edgeautoscaler.polimi.it/node: worker
+        node-role.kubernetes.io/master: "true"
       automountServiceAccountToken: true
       serviceAccountName: cpu-monitoring
       containers:
         - name: cpu-monitoring
           image: systemautoscaler/cpu-monitoring:dev
           imagePullPolicy: Always
-          env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

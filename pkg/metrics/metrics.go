@@ -44,6 +44,8 @@ type RawResourceData struct {
 	Namespace string
 	Community string
 	Cores     int64
+	Requests  int64
+	Limits    int64
 }
 
 func (r RawResourceData) AsCopy() []interface{} {
@@ -54,5 +56,7 @@ func (r RawResourceData) AsCopy() []interface{} {
 		r.Namespace,
 		r.Community,
 		r.Cores,
+		r.Requests,
+		r.Limits,
 	}
 }
