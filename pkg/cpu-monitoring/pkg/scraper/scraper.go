@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lterrac/edge-autoscaler/pkg/apiutils"
 	cc "github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
 	"github.com/lterrac/edge-autoscaler/pkg/cpu-monitoring/pkg/persistor"
 	"github.com/lterrac/edge-autoscaler/pkg/db"
@@ -14,13 +13,12 @@ import (
 	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 	"k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
-
-	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
 type Scraper interface {
@@ -29,40 +27,35 @@ type Scraper interface {
 	Stop()
 }
 
-type scraper struct {
-	pods         apiutils.PodGetter
+// by default the scraping strategy polls every pod
+// running in the node using the fieldSelector
+type defaultScraper struct {
+	pods         func(selector labels.Selector) ([]*corev1.Pod, error)
 	metrics      v1beta1.MetricsV1beta1Interface
 	persistor    persistor.Persistor
 	resourceChan chan metrics.RawResourceData
-	node         string
 }
 
-func New(pods func(namespace string) corelisters.PodNamespaceLister, metricsClient v1beta1.MetricsV1beta1Interface, node *corev1.Node) (Scraper, error) {
-	podGetter, err := apiutils.NewPodGetter(pods)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pod getter: %v", err)
-	}
-
-	resourceChan := make(chan metrics.RawResourceData, 100)
+// DefaultScraper scrapes all pods running on the node
+func DefaultScraper(pods func(selector labels.Selector) ([]*corev1.Pod, error), metricsClient v1beta1.MetricsV1beta1Interface) (Scraper, error) {
+	resourceChan := make(chan metrics.RawResourceData, 1000)
 	persistor := persistor.NewResourcePersistor(db.NewDBOptions(), resourceChan)
 
-	err = persistor.SetupDBConnection()
+	err := persistor.SetupDBConnection()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the database: %v", err)
 	}
 
-	return &scraper{
-		pods:         podGetter,
+	return &defaultScraper{
+		pods:         pods,
 		metrics:      metricsClient,
 		persistor:    persistor,
 		resourceChan: resourceChan,
-		node:         node.Name,
 	}, nil
 }
 
-func (s *scraper) Start(stopCh <-chan struct{}, hasSynced cache.InformerSynced) error {
+func (s *defaultScraper) Start(stopCh <-chan struct{}, hasSynced cache.InformerSynced) error {
 	klog.Info("wait for cache to sync")
 
 	if ok := cache.WaitForCacheSync(
@@ -82,25 +75,29 @@ func (s *scraper) Start(stopCh <-chan struct{}, hasSynced cache.InformerSynced) 
 	return nil
 }
 
-func (s *scraper) Stop() {
+func (s *defaultScraper) Stop() {
 	s.persistor.Stop()
 }
 
-func (s *scraper) scrape() {
-	pods, err := s.pods.GetPodsOfAllFunctionInNode(corev1.NamespaceAll, s.node)
+func (s *defaultScraper) scrape() {
+	pods, err := s.pods(labels.Everything())
 
 	klog.Infof("scraping %d pods", len(pods))
 
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to retrieve pods in node %v: %v", s.node, err))
+		klog.Errorf("failed to list pods: %v", err)
 		return
 	}
 
-	var total int64
+	var totalCores int64
+	var totalRequests int64
+	var totalLimits int64
 
 	for _, p := range pods {
 
-		total = 0
+		totalCores = 0
+		totalRequests = 0
+		totalLimits = 0
 
 		m, err := s.metrics.PodMetricses(p.Namespace).Get(context.TODO(), p.Name, metav1.GetOptions{})
 
@@ -117,19 +114,35 @@ func (s *scraper) scrape() {
 				continue
 			}
 
+			for _, pc := range p.Spec.Containers {
+				if pc.Name != c.Name {
+					continue
+				}
+
+				r, rExists := pc.Resources.Requests[corev1.ResourceCPU]
+				l, lExists := pc.Resources.Limits[corev1.ResourceCPU]
+
+				if rExists && lExists {
+					totalRequests += r.MilliValue()
+					totalLimits += l.MilliValue()
+				}
+			}
+
 			klog.Infof("container %v usage cpu %v", c.Name, c.Usage.Cpu().MilliValue())
-			total += c.Usage.Cpu().MilliValue()
+			totalCores += c.Usage.Cpu().MilliValue()
 		}
 
 		namespace := p.Labels[ealabels.FunctionNamespaceLabel]
 		// save to metrics database
 		s.resourceChan <- metrics.RawResourceData{
 			Timestamp: time.Now(),
-			Node:      s.node,
+			Node:      p.Spec.NodeName,
 			Function:  p.Labels[ealabels.FunctionNameLabel],
 			Namespace: namespace,
 			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()],
-			Cores:     total,
+			Cores:     totalCores,
+			Requests:  totalRequests,
+			Limits:    totalLimits,
 		}
 	}
 }
