@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	rand "math/rand"
+	"strings"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
@@ -21,7 +22,7 @@ import (
 const (
 	HttpMetricsImage   = "systemautoscaler/http-metrics"
 	HttpMetrics        = "http-metrics"
-	HttpMetricsVersion = "0.1.0"
+	HttpMetricsVersion = "dev"
 	HttpMetricsPort    = 8080
 	HttpMetricsCpu     = 100
 	HttpMetricsMemory  = 200000000
@@ -220,7 +221,7 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 					pod = newGPUPod(function, cs, node)
 
 				} else {
-					pod = newCPUPod(function, cs, nodeName)
+					pod = newCPUPod(function, cs, node)
 				}
 
 				createSet = append(createSet, pod)
@@ -263,7 +264,7 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 // newCPUPod creates a new Pod for a Function resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Function resource that 'owns' it.
-func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node string) *corev1.Pod {
+func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, node *corev1.Node) *corev1.Pod {
 
 	envVars := makeEnvVars(function)
 
@@ -271,6 +272,13 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 	if err != nil {
 		klog.Warningf("Function %s resources parsing failed: %v",
 			function.Spec.Name, err)
+	}
+
+	image := function.Spec.Image
+
+	// pull different image for inference pods running on cpu
+	if _, ok := function.Labels[ealabels.GpuFunctionLabel]; ok {
+		image = strings.ReplaceAll(image, "-gpu", "")
 	}
 
 	pod := &corev1.Pod{
@@ -282,7 +290,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				ealabels.FunctionNamespaceLabel:                              function.Namespace,
 				ealabels.FunctionNameLabel:                                   function.Name,
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
-				ealabels.NodeLabel:                                           node,
+				ealabels.NodeLabel:                                           node.Name,
 				"autoscaling":                                                "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
@@ -298,7 +306,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 			Containers: []corev1.Container{
 				{
 					Name:  function.Spec.Name,
-					Image: function.Spec.Image,
+					Image: image,
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(HttpMetricsPort), Protocol: corev1.ProtocolTCP},
 					},
@@ -322,7 +330,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							Value: "localhost",
 						},
 						{
-							Name:  "PORT",
+							Name:  "APP_PORT",
 							Value: "8080",
 						},
 						{
@@ -332,6 +340,26 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						{
 							Name:  "WINDOW_GRANULARITY",
 							Value: "1ms",
+						},
+						{
+							Name:  "NODE",
+							Value: node.Name,
+						},
+						{
+							Name:  "FUNCTION",
+							Value: function.Name,
+						},
+						{
+							Name:  "NAMESPACE",
+							Value: function.Namespace,
+						},
+						{
+							Name:  "COMMUNITY",
+							Value: cs.Name,
+						},
+						{
+							Name:  "GPU",
+							Value: "false",
 						},
 					},
 					Resources: corev1.ResourceRequirements{
@@ -456,7 +484,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				},
 				{
 					Name:  "http-metrics",
-					Image: "systemautoscaler/http-metrics:0.1.0",
+					Image: fmt.Sprintf("%s:%s", HttpMetricsImage, HttpMetricsVersion),
 					Ports: []corev1.ContainerPort{
 						{ContainerPort: int32(8000), Protocol: corev1.ProtocolTCP},
 					},
@@ -467,7 +495,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							Value: "localhost",
 						},
 						{
-							Name:  "PORT",
+							Name:  "APP_PORT",
 							Value: "8080",
 						},
 						{
@@ -477,6 +505,26 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						{
 							Name:  "WINDOW_GRANULARITY",
 							Value: "1ms",
+						},
+						{
+							Name:  "NODE",
+							Value: node.Name,
+						},
+						{
+							Name:  "FUNCTION",
+							Value: function.Name,
+						},
+						{
+							Name:  "NAMESPACE",
+							Value: function.Namespace,
+						},
+						{
+							Name:  "COMMUNITY",
+							Value: cs.Name,
+						},
+						{
+							Name:  "GPU",
+							Value: "true",
 						},
 					},
 					Resources: corev1.ResourceRequirements{
