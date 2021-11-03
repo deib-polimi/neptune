@@ -132,9 +132,6 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 				klog.Info("destination nodes\n")
 
 				for _, pod := range pods {
-					// TODO: handle nodes with GPU and CPU
-					// TODO: find better way to retrieve function port
-
 					if !isPodReady(pod) {
 						continue
 					}
@@ -148,7 +145,6 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 
 					// sync load balancer backends with the new weights
 					if !lb.ServerExists(destinationURL) {
-						// TODO: add mechanism to detect gpu instead of a hardcoded false bool
 						lb.AddServer(destinationURL, destination, gpu, &workload, func(req *queue.HTTPRequest) {})
 					} else {
 						lb.UpdateWorkload(destinationURL, &workload)
