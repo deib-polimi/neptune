@@ -2,11 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/lterrac/edge-autoscaler/pkg/db"
-	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
-	"github.com/lterrac/edge-autoscaler/pkg/metrics"
 	"io"
-	"k8s.io/klog/v2"
 	"log"
 	"net"
 	"net/http"
@@ -16,17 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asecurityteam/rolling"
+	cc "github.com/lterrac/edge-autoscaler/pkg/community-controller/pkg/controller"
+	"github.com/lterrac/edge-autoscaler/pkg/db"
+	"github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/persistor"
+	"github.com/lterrac/edge-autoscaler/pkg/metrics"
+	"k8s.io/klog/v2"
 )
 
-var target = &url.URL{}
-var window = &rolling.TimePolicy{}
-
 // Environment
-var address string
-var port string
-var windowSize time.Duration
-var windowGranularity time.Duration
 
 // MetricsDB
 var database *persistor.MetricsPersistor
@@ -56,13 +49,12 @@ func main() {
 
 	mux.Handle("/", http.HandlerFunc(ForwardRequest))
 
-	address = getenv("ADDRESS", "localhost")
-	port = getenv("APP_PORT", "8080")
+	address := getenv("ADDRESS", "localhost")
+	port := getenv("APP_PORT", cc.DefaultAppPort)
 
 	if err != nil {
 		klog.Fatal("failed to parse GPU environment variable. It should be a boolean")
 	}
-
 
 	client = &http.Client{
 		Transport: &http.Transport{
@@ -86,7 +78,7 @@ func main() {
 	go database.PollMetrics()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf("%s:%s", address, port),
 		Handler: mux,
 	}
 

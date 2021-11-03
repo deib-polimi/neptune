@@ -26,6 +26,7 @@ const (
 	HttpMetricsPort    = 8080
 	HttpMetricsCpu     = 100
 	HttpMetricsMemory  = 200000000
+	DefaultAppPort     = "8080"
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -331,7 +332,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						},
 						{
 							Name:  "APP_PORT",
-							Value: "8080",
+							Value: DefaultAppPort,
 						},
 						{
 							Name:  "WINDOW_SIZE",
@@ -496,7 +497,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						},
 						{
 							Name:  "APP_PORT",
-							Value: "8080",
+							Value: DefaultAppPort,
 						},
 						{
 							Name:  "WINDOW_SIZE",
