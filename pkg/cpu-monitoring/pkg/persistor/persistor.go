@@ -126,13 +126,13 @@ func (p *ResourcePersistor) batchData(terminate bool) {
 				if err != nil {
 					klog.Errorf("failed to persist resource data %v error: %s\n", m, err)
 				}
+				if terminate {
+					break
+				}
+
+				batch = make([]metrics.RawResourceData, 0, batchSize)
 			}
 
-			if terminate {
-				break
-			}
-
-			batch = make([]metrics.RawResourceData, 0, batchSize)
 		}
 
 	}
