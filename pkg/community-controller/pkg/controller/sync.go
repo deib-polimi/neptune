@@ -331,6 +331,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 		},
 		Spec: corev1.PodSpec{
 			SchedulerName: "edge-autoscaler",
+			TerminationGracePeriodSeconds: pointer.Int64(20),
 			Containers: []corev1.Container{
 				{
 					Name:  function.Spec.Name,
@@ -412,7 +413,6 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						PeriodSeconds:                 5,
 						SuccessThreshold:              1,
 						FailureThreshold:              1000,
-						TerminationGracePeriodSeconds: pointer.Int64(20),
 					},
 					ReadinessProbe: &corev1.Probe{
 						Handler: corev1.Handler{
@@ -426,7 +426,6 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						PeriodSeconds:                 5,
 						SuccessThreshold:              1,
 						FailureThreshold:              1000,
-						TerminationGracePeriodSeconds: pointer.Int64(20),
 					},
 				},
 			},
@@ -505,6 +504,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 		Spec: corev1.PodSpec{
 			SchedulerName: "edge-autoscaler",
 			HostIPC:       true,
+			TerminationGracePeriodSeconds: pointer.Int64(20),
 			Volumes: []corev1.Volume{
 				{
 					Name: "nvidia-mps",
@@ -604,7 +604,6 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						PeriodSeconds:                 5,
 						SuccessThreshold:              1,
 						FailureThreshold:              1000,
-						TerminationGracePeriodSeconds: pointer.Int64(20),
 					},
 					ReadinessProbe: &corev1.Probe{
 						Handler: corev1.Handler{
@@ -618,7 +617,6 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 						PeriodSeconds:                 5,
 						SuccessThreshold:              1,
 						FailureThreshold:              1000,
-						TerminationGracePeriodSeconds: pointer.Int64(20),
 					},
 				},
 			},
