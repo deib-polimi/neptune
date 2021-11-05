@@ -77,6 +77,7 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 
 		klog.Infof("source node %s\n", source)
 
+	functionProcessing:
 		for functionNamespaceName, destinationRules := range functionRules {
 
 			funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
@@ -133,8 +134,9 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 
 				for _, pod := range pods {
 					if !IsPodReady(pod) {
-						//TODO: this could be disrupting since if only a Pod is not ready it prevents the correct application of all the other routing rules
-						return
+						//process the next function since the actual one has one or more pods not ready
+						klog.Infof("function %s has pod %s not ready", functionNamespaceName, pod.Name)
+						continue functionProcessing
 					}
 
 					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, 8000))

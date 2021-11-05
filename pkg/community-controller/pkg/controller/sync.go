@@ -163,8 +163,8 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 	var err error
 
 	// used to delete duplicated pods
-	deleteSet := make([]*corev1.Pod, 0)
-	createSet := make([]*corev1.Pod, 0)
+	deleteMap := make(map[string][]*corev1.Pod)
+	createMap := make(map[string][]*corev1.Pod)
 
 	// Find the pods that are correctly deployed
 	// Pods which are not correctly deployed are appended in the deleteSet
@@ -179,17 +179,18 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
 
+					if _, ok := deleteMap[fKey]; !ok {
+						deleteMap[fKey] = make([]*corev1.Pod, 0)
+					}
+
 					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
-						deleteSet = append(deleteSet, pod)
+						deleteMap[fKey] = append(deleteMap[fKey], pod)
 					} else {
 						podsMap[fKey][pod.Spec.NodeName] = pod
 					}
 				}
 			}
 		}
-	}
-	for _, pod := range createSet {
-		klog.Infof("creating pod %s", pod.Name)
 	}
 
 	// Compute the pod creation set
@@ -228,50 +229,60 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 					pod = newCPUPod(function, cs, node)
 				}
 
-				createSet = append(createSet, pod)
+				if _, ok := createMap[functionKey]; !ok {
+					createMap[functionKey] = make([]*corev1.Pod, 0)
+				}
 
+				createMap[functionKey] = append(createMap[functionKey], pod)
 			}
 		}
 	}
 
-	for _, nodes := range podsMap {
+	for fKey, nodes := range podsMap {
 		for _, pod := range nodes {
-			deleteSet = append(deleteSet, pod)
+			deleteMap[fKey] = append(deleteMap[fKey], pod)
 		}
 	}
 
-	for _, pod := range createSet {
-		node := pod.Labels[ealabels.NodeLabel]
-		pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-		if err != nil {
-			klog.Errorf("failed to create pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
-			return err
-		}
-		err = c.bind(pod, node)
-		if err != nil {
-			klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
-			return err
-		}
-	}
-
-	for _, pod := range createSet {
-		pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
-		if err != nil {
-			klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
-			return err
-		}
-
-		if !dispatcher.IsPodReady(pod) {
-			deleteSet = nil
-			break
+	for _, pods := range createMap {
+		for _, pod := range pods {
+			node := pod.Labels[ealabels.NodeLabel]
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			if err != nil {
+				klog.Errorf("failed to create pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+			err = c.bind(pod, node)
+			if err != nil {
+				klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
+				return err
+			}
 		}
 	}
 
-	for _, pod := range deleteSet {
-		err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-		if err != nil {
-			klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
-			return err
+	for fKey, pods := range createMap {
+		for _, pod := range pods {
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+
+			// do not delete old pods if all the new ones are not ready
+			if !dispatcher.IsPodReady(pod) {
+				deleteMap[fKey] = nil
+				break
+			}
+		}
+	}
+
+	for _, pods := range deleteMap {
+		for _, pod := range pods {
+			err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
 		}
 	}
 
