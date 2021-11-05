@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	dispatcher "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/controller"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -258,11 +259,9 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 			return err
 		}
 
-		// do not remove pods if the new ones are not in ready state
-		for _, c := range pod.Status.Conditions {
-			if c.Type == corev1.PodReady && c.Status != corev1.ConditionTrue {
-				deleteSet = nil
-			}
+		if !dispatcher.IsPodReady(pod) {
+			deleteSet = nil
+			break
 		}
 	}
 

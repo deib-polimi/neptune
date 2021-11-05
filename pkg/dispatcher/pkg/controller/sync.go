@@ -132,7 +132,7 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 				klog.Info("destination nodes\n")
 
 				for _, pod := range pods {
-					if !isPodReady(pod) {
+					if !IsPodReady(pod) {
 						continue
 					}
 
@@ -164,7 +164,7 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 	}
 }
 
-func isPodReady(pod *corev1.Pod) bool {
+func IsPodReady(pod *corev1.Pod) bool {
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
 			return true
