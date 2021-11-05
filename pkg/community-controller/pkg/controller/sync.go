@@ -251,6 +251,21 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 		}
 	}
 
+	for _, pod := range createSet {
+		pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+			return err
+		}
+
+		// do not remove pods if the new ones are not in ready state
+		for _, c := range pod.Status.Conditions {
+			if c.Type == corev1.PodReady && c.Status != corev1.ConditionTrue {
+				deleteSet = nil
+			}
+		}
+	}
+
 	for _, pod := range deleteSet {
 		err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 		if err != nil {
