@@ -2,6 +2,7 @@ package persistor
 
 import (
 	"context"
+
 	"github.com/lterrac/edge-autoscaler/pkg/db"
 
 	"github.com/jackc/pgx/v4"
@@ -123,13 +124,9 @@ func (p *MetricsPersistor) batchData(terminate bool) {
 				if err != nil {
 					klog.Errorf("failed to persist metric %v error: %s\n", m, err)
 				}
+				batch = make([]metrics.RawResponseTime, 0, batchSize)
 			}
 
-			if terminate {
-				break
-			}
-
-			batch = make([]metrics.RawResponseTime, 0, batchSize)
 		}
 
 	}

@@ -116,7 +116,7 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 			}
 
 			for destination, workload := range destinationRules {
-				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination)
+				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination, gpu)
 
 				klog.Info("pods of function")
 

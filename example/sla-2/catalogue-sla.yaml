@@ -8,12 +8,12 @@ spec:
     responseTime: 50m
   defaultResources:
     cpu: "1000m"
-    memory: 1024Mi
+    memory: 1000Mi
   minResources:
-    memory: 1024Mi
+    memory: 1000Mi
     cpu: 50m
   maxResources:
-    memory: 1024Mi
+    memory: 1000Mi
     cpu: 20000m
   service:
     container: catalogue

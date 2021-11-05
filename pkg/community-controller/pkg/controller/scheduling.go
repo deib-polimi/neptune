@@ -21,6 +21,8 @@ import (
 )
 
 type SchedulingInput struct {
+	Community           string                                 `json:"community"`
+	Namespace           string                                 `json:"namespace"`
 	NodeNames           []string                               `json:"node_names"`
 	GpuNodeNames        []string                               `json:"gpu_node_names"`
 	FunctionNames       []string                               `json:"function_names"`
@@ -37,7 +39,7 @@ type SchedulingInput struct {
 
 const (
 	NodeCorePadding   = 500
-	NodeMemoryPadding = 2000000000
+	NodeMemoryPadding = 3000000000
 )
 
 type SchedulingOutput struct {
@@ -151,7 +153,7 @@ func NewSchedulingInput(
 
 	// For gpu it will not be like this
 	functionMemories := make([]int64, nFunctions)
-	gpuFunctionMemories := make([]int64, len(gpuFunctionNames))
+	gpuFunctionMemories := make([]int64, 0)
 	for i, function := range functions {
 		memoryQuantity, err := resource.ParseQuantity(function.Spec.Requests.Memory)
 		if err != nil {
@@ -170,7 +172,7 @@ func NewSchedulingInput(
 					function.Spec.Name, err)
 				return nil, err
 			}
-			gpuFunctionMemories[i] = functionGPUMemory.Value()
+			gpuFunctionMemories = append(gpuFunctionMemories, functionGPUMemory.Value())
 		}
 	}
 
@@ -200,6 +202,8 @@ func NewSchedulingInput(
 		NodeCores:           nodeCores,
 		ActualCPUAllocation: actualCPUAllocation,
 		ActualGPUAllocation: actualGPUAllocation,
+		Namespace:           namespace,
+		Community:           community,
 	}, nil
 }
 
