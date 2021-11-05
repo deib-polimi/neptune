@@ -133,7 +133,8 @@ func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.Community
 
 				for _, pod := range pods {
 					if !IsPodReady(pod) {
-						continue
+						//TODO: this could be disrupting since if only a Pod is not ready it prevents the correct application of all the other routing rules
+						return
 					}
 
 					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, 8000))
