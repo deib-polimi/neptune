@@ -97,11 +97,13 @@ func ForwardRequest(w http.ResponseWriter, req *http.Request) {
 	functionNamespace := paths[2]
 	functionName := paths[3]
 	functionPath := paths[4]
-	klog.Info(functionPath)
+	klog.Infof("Request for Function %s in namespace %s with path %s", functionName, functionNamespace, functionPath)
 
 	targetString := fmt.Sprintf("http://%s.%s.svc.cluster.local/%s", functionName, functionNamespace, functionPath)
 	target, _ := url.Parse(targetString)
 	newRequest := newRequest(req, target)
+	klog.Infof("Forwarding to target %s", target)
+	klog.Infof("Forwarded request is %v", newRequest)
 
 	res, err := client.Do(newRequest)
 	if err != nil {
@@ -129,10 +131,10 @@ func ForwardRequest(w http.ResponseWriter, req *http.Request) {
 	delta := responseTime.Sub(requestTime)
 	metricChan <- metrics.RawResponseTime{
 		Timestamp:   time.Now(),
-		Function:    function,
+		Function:    functionName,
 		Source:      node,
 		Destination: "not-defined",
-		Namespace:   namespace,
+		Namespace:   functionNamespace,
 		Community:   community,
 		Gpu:         gpu,
 		Latency:     int(delta.Milliseconds()),

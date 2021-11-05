@@ -147,13 +147,17 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 		go wait.Until(c.runPeriodicScheduleWorker, 180*time.Second, stopCh)
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
+	go wait.Until(c.runPeriodicScheduleWorker, 300*time.Second, stopCh)
 
 	return nil
 }
 
 // runPeriodicScheduleWorker is a worker which runs the scheduling algorithm
 func (c *CommunityController) runPeriodicScheduleWorker() {
-	_ = c.runScheduler("")
+	err := c.runScheduler("")
+	if err != nil {
+		klog.Info(err)
+	}
 }
 
 // runSyncCommunitySchedule is a worker which looks for inconsistencies between

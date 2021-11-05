@@ -8,12 +8,15 @@ spec:
     com.openfaas.scale.max: "0"
     com.openfaas.scale.min: "0"
     com.openfaas.scale.zero: "true"
+  annotations:
+    com.openfaas.health.http.path: "/health"
+    com.openfaas.health.http.initialDelay: "5m"
   name: catalogue
   image: systemautoscaler/catalogue:dev
   limits:
     cpu: "50m"
-    memory: "100Mi"
+    memory: "250Mi"
   requests:
     cpu: "50m"
-    memory: "100Mi"
+    memory: "250Mi"
 

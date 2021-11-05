@@ -1,0 +1,23 @@
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: carts
+  namespace: openfaas-fn
+spec:
+  labels:
+    com.openfaas.scale.max: "10"
+    com.openfaas.scale.min: "1"
+    com.openfaas.scale.zero: "true"
+  annotations:
+    com.openfaas.health.http.path: "/health"
+    com.openfaas.health.http.initialDelay: "5m"
+  name: carts
+  image: weaveworksdemos/carts:0.4.8
+  environment:
+    JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false -Dserver.port=8080"
+  limits:
+    cpu: "600m"
+    memory: "1000Mi"
+  requests:
+    cpu: "600m"
+    memory: "1000Mi"

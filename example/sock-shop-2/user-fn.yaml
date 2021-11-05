@@ -8,13 +8,16 @@ spec:
     com.openfaas.scale.max: "0"
     com.openfaas.scale.min: "0"
     com.openfaas.scale.zero: "true"
+  annotations:
+    com.openfaas.health.http.path: "/health"
+    com.openfaas.health.http.initialDelay: "5m"
   name: user
   image: systemautoscaler/user:dev
   environment:
     JAVA_OPTS: "-Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false -Dserver.port=8080"
   limits:
     cpu: "50m"
-    memory: "100Mi"
+    memory: "500Mi"
   requests:
     cpu: "50m"
-    memory: "100Mi"
+    memory: "500Mi"

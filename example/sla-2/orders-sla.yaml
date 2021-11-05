@@ -4,16 +4,18 @@ metadata:
     name: orders
     namespace: openfaas-fn
 spec:
+  integralGain: 3
+  proportionalGain: 6
   metric:
     responseTime: 300m
   defaultResources:
-    cpu: "1000m"
-    memory: 1000Mi
+    cpu: "600m"
+    memory: 1500Mi
   minResources:
-    memory: 1000Mi
-    cpu: 300m
+    memory: 1500Mi
+    cpu: 30m
   maxResources:
-    memory: 1000Mi
+    memory: 1500Mi
     cpu: 20000m
   service:
     container: orders

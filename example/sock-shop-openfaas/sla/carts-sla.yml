@@ -1,0 +1,22 @@
+apiVersion: systemautoscaler.polimi.it/v1beta1
+kind: ServiceLevelAgreement
+metadata:
+  name: carts
+  namespace: openfaas-fn
+spec:
+  metric:
+    responseTime: 50m
+  defaultResources:
+    cpu: "1000m"
+    memory: 1024Mi
+  minResources:
+    memory: 1024Mi
+    cpu: 300m
+  maxResources:
+    memory: 1024Mi
+    cpu: 20000m
+  service:
+    container: carts
+    selector:
+      matchLabels:
+        app: carts

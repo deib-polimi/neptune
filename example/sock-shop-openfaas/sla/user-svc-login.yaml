@@ -1,22 +1,22 @@
 apiVersion: systemautoscaler.polimi.it/v1beta1
 kind: ServiceLevelAgreement
 metadata:
-    name: front-end
-    namespace: openfaas-fn
+  name: user-login
+  namespace: openfaas-fn
 spec:
   metric:
-    responseTime: 100m
+    responseTime: 50m
   defaultResources:
     cpu: "1000m"
-    memory: 1000Mi
+    memory: 1024Mi
   minResources:
-    memory: 1000Mi
-    cpu: 100m
+    memory: 1024Mi
+    cpu: 300m
   maxResources:
-    memory: 1000Mi
+    memory: 1024Mi
     cpu: 20000m
   service:
-    container: front-end
+    container: user-login
     selector:
       matchLabels:
-        name: front-end
+        app: user-login

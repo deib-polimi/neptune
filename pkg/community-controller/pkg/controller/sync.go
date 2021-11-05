@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 	rand "math/rand"
 	"strings"
 
@@ -387,6 +389,34 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 					},
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds:           5,
+						TimeoutSeconds:                60,
+						PeriodSeconds:                 5,
+						SuccessThreshold:              1,
+						FailureThreshold:              1000,
+						TerminationGracePeriodSeconds: pointer.Int64(20),
+					},
+					ReadinessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds:           5,
+						TimeoutSeconds:                60,
+						PeriodSeconds:                 5,
+						SuccessThreshold:              1,
+						FailureThreshold:              1000,
+						TerminationGracePeriodSeconds: pointer.Int64(20),
+					},
 				},
 			},
 		},
@@ -452,7 +482,6 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
 				ealabels.NodeLabel:                                           node.Name,
 				ealabels.GpuFunctionLabel:                                    "",
-				"autoscaling":                                                "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(function, schema.GroupVersionKind{
@@ -551,6 +580,34 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
+					},
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds:           5,
+						TimeoutSeconds:                60,
+						PeriodSeconds:                 5,
+						SuccessThreshold:              1,
+						FailureThreshold:              1000,
+						TerminationGracePeriodSeconds: pointer.Int64(20),
+					},
+					ReadinessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds:           5,
+						TimeoutSeconds:                60,
+						PeriodSeconds:                 5,
+						SuccessThreshold:              1,
+						FailureThreshold:              1000,
+						TerminationGracePeriodSeconds: pointer.Int64(20),
 					},
 				},
 			},

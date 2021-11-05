@@ -1,0 +1,38 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: queue-master
+  namespace: openfaas-fn
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: queue-master
+  minReplicas: 1
+  maxReplicas: 50
+  metrics:
+    - type: Object
+      object:
+        metric:
+          name: response_time
+        describedObject:
+          apiVersion: /v1
+          kind: Service
+          name: queue-master
+        target:
+          type: Value
+          value: 100m
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 5
+          periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 15
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 15
+
