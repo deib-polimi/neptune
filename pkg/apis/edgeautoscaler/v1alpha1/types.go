@@ -44,7 +44,7 @@ type CommunityConfigurationSpec struct {
 	// CommunitySize is the upper bound on the community size
 	CommunitySize int64 `json:"community-size"`
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=10000
 	// +kubebuilder:validation:Minimum=0
 	// MaximumDelay is the upper bound for the delay inside a community measured in milliseconds
 	MaximumDelay int32 `json:"maximum-delay"`

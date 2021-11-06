@@ -13,7 +13,6 @@ require (
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jmcvetta/randutil v0.0.0-20150817122601-2bb1b664bcff
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/onsi/ginkgo v1.16.4
