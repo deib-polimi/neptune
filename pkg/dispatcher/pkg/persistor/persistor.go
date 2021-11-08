@@ -30,9 +30,8 @@ var (
 
 const (
 	// InsertMetricQuery is the prepare statement for inserting metrics.
-	InsertMetricQuery = "INSERT INTO metric (timestamp, source, destination, function, namespace, community, gpu, latency) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);"
-	batchSize         = 1000
-	table             = "metric"
+	batchSize = 1000
+	table     = "metric"
 )
 
 // MetricsPersistor receives metrics from the load balancer and persists them to a backend.
