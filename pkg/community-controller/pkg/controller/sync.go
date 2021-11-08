@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 	rand "math/rand"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
 	dispatcher "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/controller"
@@ -30,6 +31,7 @@ const (
 	HttpMetricsCpu     = 100
 	HttpMetricsMemory  = 200000000
 	DefaultAppPort     = "8080"
+	SchedulerName      = "edge-autoscaler"
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -330,7 +332,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 			},
 		},
 		Spec: corev1.PodSpec{
-			SchedulerName:                 "edge-autoscaler",
+			SchedulerName:                 SchedulerName,
 			TerminationGracePeriodSeconds: pointer.Int64(20),
 			Containers: []corev1.Container{
 				{
