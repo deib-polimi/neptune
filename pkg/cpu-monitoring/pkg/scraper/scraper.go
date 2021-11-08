@@ -131,14 +131,26 @@ func (s *defaultScraper) scrape() {
 			totalCores += c.Usage.Cpu().MilliValue()
 		}
 
-		namespace := p.Labels[ealabels.FunctionNamespaceLabel]
+		function := ""
+
+		if f, ok := p.Labels[ealabels.FunctionNameLabel]; ok {
+			function = f
+		}
+
+		community := ""
+
+		if c, ok := p.Labels[ealabels.CommunityLabel.WithNamespace(p.Namespace).String()]; ok {
+			community = c
+		}
+
 		// save to metrics database
 		s.resourceChan <- metrics.RawResourceData{
 			Timestamp: time.Now(),
 			Node:      p.Spec.NodeName,
-			Function:  p.Labels[ealabels.FunctionNameLabel],
-			Namespace: namespace,
-			Community: p.Labels[ealabels.CommunityLabel.WithNamespace(namespace).String()],
+			Function:  function,
+			Pod:       p.Name,
+			Namespace: p.Namespace,
+			Community: community,
 			Cores:     totalCores,
 			Requests:  totalRequests,
 			Limits:    totalLimits,
