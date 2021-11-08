@@ -34,6 +34,10 @@ const (
 	SchedulerName      = "edge-autoscaler"
 )
 
+var (
+	DefaultTerminationGracePeriodSeconds = pointer.Int64(20)
+)
+
 func (c *CommunityController) runScheduler(_ string) error {
 
 	klog.Infof("Rescheduling community %s/%s", c.communityNamespace, c.communityName)
@@ -333,7 +337,7 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 		},
 		Spec: corev1.PodSpec{
 			SchedulerName:                 SchedulerName,
-			TerminationGracePeriodSeconds: pointer.Int64(20),
+			TerminationGracePeriodSeconds: DefaultTerminationGracePeriodSeconds,
 			Containers: []corev1.Container{
 				{
 					Name:  function.Spec.Name,
@@ -506,7 +510,7 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 		Spec: corev1.PodSpec{
 			SchedulerName:                 "edge-autoscaler",
 			HostIPC:                       true,
-			TerminationGracePeriodSeconds: pointer.Int64(20),
+			TerminationGracePeriodSeconds: DefaultTerminationGracePeriodSeconds,
 			Volumes: []corev1.Volume{
 				{
 					Name: "nvidia-mps",
