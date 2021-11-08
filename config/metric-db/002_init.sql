@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS resource
   timestamp TIMESTAMP,
   node VARCHAR(50),
   function VARCHAR(50),
+  pod VARCHAR(50),
   namespace VARCHAR(50),
   cores BIGINT,
   requests BIGINT,

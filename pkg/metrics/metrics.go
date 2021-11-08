@@ -41,6 +41,7 @@ type RawResourceData struct {
 	Timestamp time.Time
 	Node      string
 	Function  string
+	Pod       string
 	Namespace string
 	Community string
 	Cores     int64
@@ -53,6 +54,7 @@ func (r RawResourceData) AsCopy() []interface{} {
 		r.Timestamp,
 		r.Node,
 		r.Function,
+		r.Pod,
 		r.Namespace,
 		r.Community,
 		r.Cores,
