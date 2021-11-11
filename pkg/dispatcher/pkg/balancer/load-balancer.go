@@ -180,8 +180,7 @@ func (lb *LoadBalancer) DeleteServer(serverURL *url.URL) error {
 		return fmt.Errorf(ServerNotFoundError, serverURL.Host)
 	}
 
-	lb.serverPool.RemoveBackend(b)
-	return nil
+	return lb.serverPool.RemoveBackend(b)
 }
 
 // ServerExists checks if a backend exists in the pool

@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS ping
   timestamp TIMESTAMP,
   from_node VARCHAR(50),
   to_node VARCHAR(50),
-  avg_latency INTEGER,
-  max_latency INTEGER,
-  min_latency INTEGER,
+  avg_latency DOUBLE PRECISION,
+  max_latency DOUBLE PRECISION,
+  min_latency DOUBLE PRECISION,
   PRIMARY KEY (timestamp, from_node)
   );
 

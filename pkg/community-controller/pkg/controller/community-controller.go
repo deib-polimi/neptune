@@ -143,8 +143,7 @@ func (c *CommunityController) Run(threadiness int, stopCh <-chan struct{}) error
 	klog.Info("Starting system controller workers")
 
 	for i := 0; i < threadiness; i++ {
-		// TODO: Currently the scheduler reschedules pods every 30 seconds. It should be change to be triggered by event or as cron jobs
-		go wait.Until(c.runPeriodicScheduleWorker, 30*time.Second, stopCh)
+		// TODO: Currently the scheduler reschedules pods every 180 seconds. It should be change to be triggered by event or as cron jobs
 		go wait.Until(c.runSyncCommunitySchedule, time.Second, stopCh)
 	}
 	go wait.Until(c.runPeriodicScheduleWorker, 300*time.Second, stopCh)

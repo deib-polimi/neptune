@@ -171,6 +171,8 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 	// used to delete duplicated pods
 	deleteMap := make(map[string][]*corev1.Pod)
 	createMap := make(map[string][]*corev1.Pod)
+	actualPods := make(map[string][]*corev1.Pod)
+	outOfCPUPods := make([]*corev1.Pod, 0)
 
 	// Find the pods that are correctly deployed
 	// Pods which are not correctly deployed are appended in the deleteSet
@@ -197,15 +199,20 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 				}
 			}
 		}
+
+		if pod.Status.Phase == corev1.PodFailed && pod.Status.Reason == "OutOfcpu" {
+			outOfCPUPods = append(outOfCPUPods, pod)
+		}
+
 	}
 
 	// Compute the pod creation set
 	// Pods which are correctly deployed are deleted from podsMap, in this way podsMap will contain only pods
 	// which should be deleted
-	for functionKey, nodes := range functionKeys {
-		fNamespace, fName, err := cache.SplitMetaNamespaceKey(functionKey)
+	for fKey, nodes := range functionKeys {
+		fNamespace, fName, err := cache.SplitMetaNamespaceKey(fKey)
 		if err != nil {
-			klog.Errorf("invalid resource key: %s", functionKey)
+			klog.Errorf("invalid resource key: %s", fKey)
 			return err
 		}
 		function, err := c.listers.Functions(fNamespace).Get(fName)
@@ -215,8 +222,13 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 		}
 		for nodeName, ok := range nodes {
 			if ok {
-				if _, ok := podsMap[functionKey][nodeName]; ok {
-					delete(podsMap[functionKey], nodeName)
+				if _, ok := podsMap[fKey][nodeName]; ok {
+					if _, ok := actualPods[fKey]; !ok {
+						actualPods[fKey] = make([]*corev1.Pod, 0)
+					}
+
+					actualPods[fKey] = append(actualPods[fKey], podsMap[fKey][nodeName])
+					delete(podsMap[fKey], nodeName)
 					continue
 				}
 
@@ -235,11 +247,11 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 					pod = newCPUPod(function, cs, node)
 				}
 
-				if _, ok := createMap[functionKey]; !ok {
-					createMap[functionKey] = make([]*corev1.Pod, 0)
+				if _, ok := createMap[fKey]; !ok {
+					createMap[fKey] = make([]*corev1.Pod, 0)
 				}
 
-				createMap[functionKey] = append(createMap[functionKey], pod)
+				createMap[fKey] = append(createMap[fKey], pod)
 			}
 		}
 	}
@@ -250,7 +262,7 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 		}
 	}
 
-	for _, pods := range createMap {
+	for fKey, pods := range createMap {
 		for _, pod := range pods {
 			node := pod.Labels[ealabels.NodeLabel]
 			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
@@ -263,6 +275,7 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 				klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
 				return err
 			}
+			klog.Infof("created function %s pod %s", fKey, pod.Name)
 		}
 	}
 
@@ -276,19 +289,47 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 
 			// do not delete old pods if all the new ones are not ready
 			if !dispatcher.IsPodReady(pod) {
+				klog.Infof("function %s is not ready, skipping delete set", fKey)
 				deleteMap[fKey] = nil
 				break
 			}
 		}
 	}
 
-	for _, pods := range deleteMap {
+	for fKey, pods := range actualPods {
+		for _, pod := range pods {
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+
+			// do not delete old pods if all the new ones are not ready
+			if !dispatcher.IsPodReady(pod) {
+				klog.Infof("function %s is not ready, skipping delete set", fKey)
+				deleteMap[fKey] = nil
+				break
+			}
+		}
+	}
+
+	for fKey, pods := range deleteMap {
 		for _, pod := range pods {
 			err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 			if err != nil {
 				klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
 				return err
 			}
+			klog.Infof("delete function %s pod %s", fKey, pod.Name)
+
+		}
+	}
+
+	for _, pod := range outOfCPUPods {
+		err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+		if err != nil {
+			klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+			return err
 		}
 	}
 
