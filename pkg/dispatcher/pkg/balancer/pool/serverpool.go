@@ -52,10 +52,15 @@ func (s *ServerPool) SetBackend(b Backend, weigth int) {
 	s.backends = append(s.backends, ru.Choice{Weight: weigth, Item: b})
 }
 
-// RemoveBackend removes a backend from the pool
-func (s *ServerPool) RemoveBackend(b Backend) {
+// RemoveBackend removes a backend from the pool. returns an error if the backend list would be empty with the last removal
+func (s *ServerPool) RemoveBackend(b Backend) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	if len(s.backends) == 1 {
+		return fmt.Errorf("cannot remove the last backend")
+	}
+
 	for i, choice := range s.backends {
 		if choice.Item == b {
 			s.backends[i] = s.backends[len(s.backends)-1]
@@ -64,9 +69,7 @@ func (s *ServerPool) RemoveBackend(b Backend) {
 		}
 	}
 
-	if len(s.backends) == 0 {
-		klog.Errorf("Empty backends. Last backend removed is: %v", b)
-	}
+	return nil
 }
 
 // GetBackend returns a backend given its URL. It returns the backend and bool

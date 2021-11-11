@@ -70,101 +70,115 @@ func (c *LoadBalancerController) syncCommunitySchedule(key string) error {
 }
 
 func (c *LoadBalancerController) syncRoutingRules(sourceRules v1alpha1.CommunitySourceRoutingRule, nodeName, community string, gpu bool) {
-	for source, functionRules := range sourceRules {
-		if source != nodeName {
+
+	source := ""
+	var functionRules v1alpha1.CommunityFunctionRoutingRule
+
+	for source, functionRules = range sourceRules {
+		if source == nodeName {
+			break
+		}
+	}
+
+	if source == "" {
+		return
+	}
+
+	skipForNotReadyPods := false
+
+	for functionNamespaceName, destinationRules := range functionRules {
+
+		funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
+
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", functionNamespaceName))
 			continue
 		}
 
-		klog.Infof("source node %s\n", source)
+		function, err := c.listers.FunctionLister.Functions(funcNamespace).Get(funcName)
 
-	functionProcessing:
-		for functionNamespaceName, destinationRules := range functionRules {
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("couldn't find function %s: %v", funcName, err))
+			continue
+		}
 
-			funcNamespace, funcName, err := cache.SplitMetaNamespaceKey(functionNamespaceName)
+		var lb *balancer.LoadBalancer
+
+		value, _ := c.balancers.LoadOrStore(functionNamespaceName, balancer.NewLoadBalancer(
+			balancer.NodeInfo{
+				Node:      source,
+				Function:  funcName,
+				Namespace: funcNamespace,
+				Community: community,
+			},
+			c.metricChan,
+		))
+
+		lb = value.(*balancer.LoadBalancer)
+
+		actualBackends := []*url.URL{}
+
+		for destination, workload := range destinationRules {
+
+			pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination, gpu)
 
 			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", functionNamespaceName))
+				utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
 				continue
 			}
 
-			function, err := c.listers.FunctionLister.Functions(funcNamespace).Get(funcName)
-
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("couldn't find function %s: %v", funcName, err))
-				continue
-			}
-			klog.Infof("route to function %s\n", functionNamespaceName)
-
-			var lb *balancer.LoadBalancer
-
-			value, _ := c.balancers.LoadOrStore(functionNamespaceName, balancer.NewLoadBalancer(
-				balancer.NodeInfo{
-					Node:      source,
-					Function:  funcName,
-					Namespace: funcNamespace,
-					Community: community,
-				},
-				c.metricChan,
-			))
-
-			lb = value.(*balancer.LoadBalancer)
-
-			actualBackends := []*url.URL{}
-			klog.Infof("backend in routing rules for function: %v in node: %v", functionNamespaceName, source)
-
-			for destination := range destinationRules {
-				klog.Infof("destination: %v", destination)
+			if !ArePodsReady(pods) {
+				skipForNotReadyPods = true
+				break
 			}
 
-			for destination, workload := range destinationRules {
-				pods, err := c.resGetter.GetPodsOfFunctionInNode(function, destination, gpu)
+			for _, pod := range pods {
 
-				klog.Info("pods of function")
-
-				for _, pod := range pods {
-					klog.Infof("pod: %v in node: %v", pod.Name, pod.Spec.NodeName)
-				}
+				destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, 8000))
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
 					continue
 				}
 
-				klog.Info("destination nodes\n")
-
-				for _, pod := range pods {
-					if !IsPodReady(pod) {
-						//process the next function since the actual one has one or more pods not ready
-						klog.Infof("function %s has pod %s not ready", functionNamespaceName, pod.Name)
-						continue functionProcessing
-					}
-
-					destinationURL, err := url.Parse(fmt.Sprintf("http://%s:%d", pod.Status.PodIP, 8000))
-
-					if err != nil {
-						utilruntime.HandleError(fmt.Errorf("error parsing function url: %s", err))
-						continue
-					}
-
-					// sync load balancer backends with the new weights
-					if !lb.ServerExists(destinationURL) {
-						lb.AddServer(destinationURL, destination, gpu, &workload, func(req *queue.HTTPRequest) {})
-					} else {
-						lb.UpdateWorkload(destinationURL, &workload)
-					}
-
-					actualBackends = append(actualBackends, destinationURL)
+				// sync load balancer backends with the new weights
+				if !lb.ServerExists(destinationURL) {
+					klog.Infof("load balancer %s add server %s", functionNamespaceName, destination)
+					lb.AddServer(destinationURL, destination, gpu, &workload, func(req *queue.HTTPRequest) {})
+				} else {
+					lb.UpdateWorkload(destinationURL, &workload)
 				}
+
+				actualBackends = append(actualBackends, destinationURL)
 			}
+		}
 
-			// clean old backends
-			deleteSet := lb.ServerPoolDiff(actualBackends)
+		if skipForNotReadyPods {
+			continue
+		}
 
-			for _, b := range deleteSet {
-				lb.DeleteServer(b)
+		// clean old backends
+		deleteSet := lb.ServerPoolDiff(actualBackends)
+
+		for _, b := range deleteSet {
+			klog.Infof("load balancer %s delete server %s", functionNamespaceName)
+
+			err := lb.DeleteServer(b)
+
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("error deleting server %s: %v", b, err))
 			}
 		}
 	}
+}
+
+func ArePodsReady(pods []*corev1.Pod) bool {
+	for _, p := range pods {
+		if !IsPodReady(p) {
+			return false
+		}
+	}
+	return true
 }
 
 func IsPodReady(pod *corev1.Pod) bool {

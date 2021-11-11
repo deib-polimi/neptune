@@ -38,7 +38,7 @@ type defaultScraper struct {
 
 // DefaultScraper scrapes all pods running on the node
 func DefaultScraper(pods func(selector labels.Selector) ([]*corev1.Pod, error), metricsClient v1beta1.MetricsV1beta1Interface) (Scraper, error) {
-	resourceChan := make(chan metrics.RawResourceData, 1000)
+	resourceChan := make(chan metrics.RawResourceData, 10000)
 	persistor := persistor.NewResourcePersistor(db.NewDBOptions(), resourceChan)
 
 	err := persistor.SetupDBConnection()
@@ -93,6 +93,10 @@ func (s *defaultScraper) scrape() {
 	var totalLimits int64
 
 	for _, p := range pods {
+
+		if p.Spec.NodeName == "" {
+			continue
+		}
 
 		totalCores = 0
 		totalRequests = 0
