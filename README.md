@@ -89,6 +89,15 @@ If you are using `Kubectl`, you can:
 kubectl apply -f {function_configuration_file}.yaml
 ```
 
+# CRDs code generation
+
+Since the API code generator used in [hack/update-codegen.sh](hack/update-codegen.sh) was not designed to work with Go modules, it is mandatory to recreate the entire module path in order to make the code generation work.  
+This gives you two options:  
+1) Create the folders `github.com/deib-polimi` and clone this repository in any location of your filesystem.
+2) Clone the repository inside the `GOPATH` directory.
+
+In the end there is no choice other than to preserve the module hierarchy.
+
 ## Video Presentation
 You can find a presentation of this work on [Youtube](https://link.com).
 
