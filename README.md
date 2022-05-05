@@ -50,18 +50,42 @@ status:
 
 * **Community Schedule**: `CommunitySchedule` defines the function placement and routing policies.
 
-## NEPTUNE Dependecies
+## Getting started
 
-Serve anche la repo Java
-e la repo python
-Modificare i binari di k3s
-Kosmos
-Terraform
+### Infrastructure Setup
 
-## Esempio di come lanciare sta merda
+NEPTUNE is a complex framework that requires a modified version of K3s for in-place vertical-autoscaling.
 
-Come lanciare una funzione
-Guardare example
+A Terraform repository to deploy a modified K3s cluster on the AWS Cloud can be found [here](link).
+
+Otherwise it's necessary to setup a K3s distribution which integrate KEP 1287 ([link](link)).
+
+### Deploy a function
+
+To deploy a function it's sufficient to deploy an OpenFaaS function Custom Resouce. An example is:
+```
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: prime-numbers
+  namespace: openfaas-fn
+spec:
+  image: systemautoscaler/prime-numbers:0.1.0
+  labels:
+    com.openfaas.scale.factor: "20"
+    com.openfaas.scale.max: "100"
+    com.openfaas.scale.min: "1"
+    com.openfaas.scale.zero: "false"
+    edgeautoscaler.polimi.it/scheduler: edge-autoscaler
+  name: prime-numbers
+  readOnlyRootFilesystem: false
+  requests:
+    memory: 1M
+```
+If you are using `Kubectl`, you can:
+```
+kubectl apply -f {function_configuration_file}.yaml
+```
 
 ## Video Presentation
 You can find a presentation of this work on [Youtube](https://link.com).
