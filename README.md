@@ -3,7 +3,7 @@
   <img width="100%" src="https://i.imgur.com/tm9mSuM.png" alt="Politecnico di Milano" />
 </p>
 
-## Overview
+## NEPTUNE Overview
 
 NEPTUNE is a comprehensive framework, developed at the Politecnico di Milano, for the runtime management of large-scale edge applications that exploits placement, routing, network delays, and CPU/GPU interplay in a coordinated way to allow for the concurrent execution of edge applications that meet user-set response times.
 
@@ -31,11 +31,26 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
 
 ## NEPTUNE Resources
 
-* **Community Setting**: .
+* **Community Configuration**: `CommunityConfiguration` defines the properties of each community inside the cluster. An example is:
+```
+apiVersion: edgeautoscaler.polimi.it/v1alpha1
+kind: CommunityConfiguration
+metadata:
+  name: example-cc
+  namespace: openfaas-fn
+spec:
+  community-size: 3
+  maximum-delay: 100
+  probability-threshold: 20
+  iterations: 20
+  slpa-service: slpa.default.svc.cluster.local:4567
+status:
+  generated-communities: []
+```
 
-* **Community Schedule**: .
+* **Community Schedule**: `CommunitySchedule` defines the function placement and routing policies.
 
-## How to run
+## NEPTUNE Dependecies
 
 Serve anche la repo Java
 e la repo python
