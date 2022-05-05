@@ -108,7 +108,6 @@ If you use this code for evidential learning as part of your project or paper, p
       title={NEPTUNE: Network- and GPU-aware Management of Serverless Functions at the Edge},
       author={Baresi, Luciano and Hu, Davide Yi Xian and Quattrocchi, Giovanni and Terracciano, Luca},
       journal={SEAMS},
-      volume={33},
       year={2022}
     }
     
