@@ -11,7 +11,10 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
 
 ## NEPTUNE Controllers
 
-* **System Controller**: .
+* **System Controller**: `SystemController` is a component that splits large edge topologies into smaller, closely-located and indenpendet communities.     Communities are found using an external function that, given a set of nodes and the latencies between all nodes, returns a set of communities and the set of nodes assigned to each community. 
+  The base implementation of the `SystemController` adopts SLPA (Speaker-Listener Label Propagation Algorithm, Xie et al., 2019).
+  The `SystemController` takes in input `CommunityConfigurations` Custom Resources and it splits the network of nodes according to the `CommunityCOnfigurations`.
+  A network of nodes is split into communities by assigning to each node a label that denote to which community the node belongs to.
 
 * **Community Controller**: .
 
