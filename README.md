@@ -1,15 +1,17 @@
+![pipelines](https://github.com/lterrac/system-autoscaler/workflows/base-pipeline/badge.svg)
+
 # NEPTUNE
 <p align="center">
   <img width="100%" src="https://i.imgur.com/tm9mSuM.png" alt="Politecnico di Milano" />
 </p>
 
-## NEPTUNE Overview
+## Overview
 
 NEPTUNE is a comprehensive framework, developed at the Politecnico di Milano, for the runtime management of large-scale edge applications that exploits placement, routing, network delays, and CPU/GPU interplay in a coordinated way to allow for the concurrent execution of edge applications that meet user-set response times.
 
 NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchestrator as a set of Kubernetes Controllers and Custom Resources.
 
-## NEPTUNE Controllers
+## Controllers
 
 * **System Controller**: `SystemController` is the component that splits large edge topologies into smaller, closely-located and indenpendet communities.     Communities are found using an external function that, given a set of nodes and the latencies between all nodes, returns a set of communities and the set of nodes assigned to each community. 
     The base implementation of the `SystemController` adopts SLPA (Speaker-Listener Label Propagation Algorithm, Xie et al., 2019). The implementation of the SLPA algorithm can be found [here](link)
@@ -29,7 +31,7 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
 
 * **Metrics Database**: `MetricsDatabase` is a SQL database that stores data. It has been chosen to use TimeScaleDB, but since it has an interface PostGresQL-compatible, it's also possible to use PSQL. 
 
-## NEPTUNE Resources
+## Resources
 
 * **Community Configuration**: `CommunityConfiguration` defines the properties of each community inside the cluster. An example is:
 ```
