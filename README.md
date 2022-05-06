@@ -99,7 +99,7 @@ This gives you two options:
 In the end there is no choice other than to preserve the module hierarchy.
 
 ## Video Presentation
-You can find a presentation of this work on [Youtube](https://link.com).
+You can find a presentation of this work on [Youtube](https://youtu.be/bvtL6Ohme_4).
 
 ## Citation
 If you use this code for evidential learning as part of your project or paper, please cite the following work:  
