@@ -10,8 +10,8 @@ import (
 
 type EdgeautoscalerV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	CommunityConfigurationsGetter
 	CommunitySchedulesGetter
-	CommunitySettingsesGetter
 }
 
 // EdgeautoscalerV1alpha1Client is used to interact with features provided by the edgeautoscaler.polimi.it group.
@@ -19,12 +19,12 @@ type EdgeautoscalerV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *EdgeautoscalerV1alpha1Client) CommunitySchedules(namespace string) CommunityScheduleInterface {
-	return newCommunitySchedules(c, namespace)
+func (c *EdgeautoscalerV1alpha1Client) CommunityConfigurations(namespace string) CommunityConfigurationInterface {
+	return newCommunityConfigurations(c, namespace)
 }
 
-func (c *EdgeautoscalerV1alpha1Client) CommunitySettingses(namespace string) CommunitySettingsInterface {
-	return newCommunitySettingses(c, namespace)
+func (c *EdgeautoscalerV1alpha1Client) CommunitySchedules(namespace string) CommunityScheduleInterface {
+	return newCommunitySchedules(c, namespace)
 }
 
 // NewForConfig creates a new EdgeautoscalerV1alpha1Client for the given config.

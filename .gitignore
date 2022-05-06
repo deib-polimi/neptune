@@ -19,3 +19,14 @@ vendor/
 pkg/*/community-controller
 pkg/*/system-controller
 pkg/*/edge-scheduler
+pkg/*/function-deployment-webhook
+pkg/*/cpu-monitoring
+pkg/*/simple-dispatcher
+
+.idea/
+*.pem
+pkg/dispatcher/dispatcher
+pkg/dispatcher/pkg/controller/loadbalancer-controller.go
+*/admission-registration-subst.yaml
+deploy/kosmos.pem
+deploy/k3s

@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: community-controller
+  namespace: openfaas-fn
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-autoscaler:community-controller
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "nodes"]
+    verbs: ["update", "get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["*"]
+  - apiGroups: ["edgeautoscaler.polimi.it"]
+    resources: ["communityconfigurations", "communityschedules"]
+    verbs: ["*"]
+  # TODO: wildcard for everything
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+    # verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-autoscaler:community-controller
+subjects:
+  - kind: ServiceAccount
+    name: community-controller
+    namespace: openfaas-fn
+    apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: edge-autoscaler:community-controller
+  apiGroup: rbac.authorization.k8s.io

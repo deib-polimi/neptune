@@ -1,0 +1,20 @@
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: front-end
+  namespace: openfaas-fn
+spec:
+  labels:
+    com.openfaas.scale.max: "0"
+    com.openfaas.scale.min: "0"
+    com.openfaas.scale.zero: "true"
+  name: front-end
+  image: systemautoscaler/front-end:dev
+  environment:
+    SESSION_REDIS: "true"
+  limits:
+    cpu: "100m"
+    memory: "1000Mi"
+  requests:
+    cpu: "100m"
+    memory: "1000Mi"

@@ -1,0 +1,22 @@
+apiVersion: systemautoscaler.polimi.it/v1beta1
+kind: ServiceLevelAgreement
+metadata:
+    name: shipping
+    namespace: openfaas-fn
+spec:
+  metric:
+    responseTime: 50m
+  defaultResources:
+    cpu: "1000m"
+    memory: 1000Mi
+  minResources:
+    memory: 1000Mi
+    cpu: 300m
+  maxResources:
+    memory: 1000Mi
+    cpu: 20000m
+  service:
+    container: shipping
+    selector:
+      matchLabels:
+        name: shipping

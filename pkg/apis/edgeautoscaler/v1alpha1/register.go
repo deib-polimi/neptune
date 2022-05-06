@@ -32,8 +32,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&CommunitySchedule{},
 		&CommunityScheduleList{},
-		&CommunitySettings{},
-		&CommunitySettingsList{},
+		&CommunityConfiguration{},
+		&CommunityConfigurationList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

@@ -1,10 +1,10 @@
 
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: communityschedules.edgeautoscaler.polimi.it
 spec:
@@ -15,29 +15,75 @@ spec:
     plural: communityschedules
     singular: communityschedule
   scope: Namespaced
-  validation:
-    openAPIV3Schema:
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          type: object
-      required:
-      - spec
-      type: object
-  version: v1alpha1
   versions:
   - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CommunitySchedule wraps the rules to route traffic inside a community
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CommunityScheduleSpec is the spec for a CommunitySchedule
+            properties:
+              algorithm-service:
+                type: string
+              cpu-allocations:
+                additionalProperties:
+                  additionalProperties:
+                    type: boolean
+                  type: object
+                type: object
+              cpu-routing-rules:
+                additionalProperties:
+                  additionalProperties:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    type: object
+                  type: object
+                type: object
+              gpu-allocations:
+                additionalProperties:
+                  additionalProperties:
+                    type: boolean
+                  type: object
+                type: object
+              gpu-routing-rules:
+                additionalProperties:
+                  additionalProperties:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    type: object
+                  type: object
+                type: object
+            required:
+            - algorithm-service
+            - cpu-allocations
+            - cpu-routing-rules
+            - gpu-allocations
+            - gpu-routing-rules
+            type: object
+        required:
+        - spec
+        type: object
     served: true
     storage: true
 status:
