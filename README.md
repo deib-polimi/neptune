@@ -14,7 +14,7 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
 ## Controllers
 
 * **System Controller**: `SystemController` is the component that splits large edge topologies into smaller, closely-located and indenpendet communities.     Communities are found using an external function that, given a set of nodes and the latencies between all nodes, returns a set of communities and the set of nodes assigned to each community. 
-    The base implementation of the `SystemController` adopts SLPA (Speaker-Listener Label Propagation Algorithm, Xie et al., 2019). The implementation of the SLPA algorithm can be found [here](link).
+    The base implementation of the `SystemController` adopts SLPA (Speaker-Listener Label Propagation Algorithm, Xie et al., 2019). The implementation of the SLPA algorithm can be found [here](https://github.com/deib-polimi/paps-SLPA).
     The `SystemController` takes in input `CommunityConfigurations` Custom Resources and it splits the network of nodes according to `CommunityConfigurations`.
     A network of nodes is split into communities by assigning to each node a label that denote to which community the node belongs to.
 
@@ -23,7 +23,7 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
     The `CommunityController` relies on solving a two-step mixed integer linear programming problem. The solver can be found [here](link).
     The `CommunityController` is composed by two control loops: the first one updates `CommunitySchedule` using the two-step mixed integer linear programming, and the second one tries to reconcile the actual function schedule and the one specified in `CommunitySchedule`.
 
-* **Node Controller**: `NodeController` is the component that vertical scales function in order to meet user-set response times. The node controller has been implemented in another project named Kosmos. The project can be found [here](link).
+* **Node Controller**: `NodeController` is the component that vertical scales function in order to meet user-set response times. The node controller has been implemented in another project named Kosmos. The project can be found [here](https://github.com/deib-polimi/kosmos).
 
 * **Request Dispatcher**: `RequestDispacher` is the component that routes requests to function instances according to the routing policies specified in `CommunitySchedule`. The requests dispatcher works only with HTTP and HTTPS messages.
 
@@ -58,9 +58,9 @@ status:
 
 NEPTUNE is a complex framework that requires a modified version of K3s for in-place vertical-autoscaling.
 
-A Terraform repository to deploy a modified K3s cluster on the AWS Cloud can be found [here](link).
+A Terraform repository to deploy a modified K3s cluster on the AWS Cloud can be found [here](https://github.com/deib-polimi/k3s-vertical-scaling-multi-regioncluster).
 
-Otherwise it's necessary to setup a K3s distribution which integrate KEP 1287 ([link](link)).
+Otherwise it's necessary to setup a K3s distribution which integrate KEP 1287 ([link](https://github.com/kubernetes/enhancements/issues/1287)).
 
 ### Deploy a function
 
