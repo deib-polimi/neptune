@@ -20,7 +20,7 @@ NEPTUNE implementation run on top of Kubernetes or Kubernetes-compatible orchest
 
 * **Community Controller**: `CommunityController` is the component that schedules functions on nodes and provides routing policies for smart requests routing.
     As in the `SystemController`, function schedules and routing policies are found using an external function that requires the information about the topology and the set of functions to be deployed on top of the nodes. 
-    The `CommunityController` relies on solving a two-step mixed integer linear programming problem. The solver can be found [here](link).
+    The `CommunityController` relies on solving a two-step mixed integer linear programming problem. The solver can be found [here](https://github.com/deib-polimi/neputne-mips).
     The `CommunityController` is composed by two control loops: the first one updates `CommunitySchedule` using the two-step mixed integer linear programming, and the second one tries to reconcile the actual function schedule and the one specified in `CommunitySchedule`.
 
 * **Node Controller**: `NodeController` is the component that vertical scales function in order to meet user-set response times. The node controller has been implemented in another project named Kosmos. The project can be found [here](https://github.com/deib-polimi/kosmos).
