@@ -18,3 +18,34 @@ spec:
   topologyKeys:
     - "kubernetes.io/hostname"
     - "*"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: front-end
+  namespace: openfaas-fn
+  labels:
+    app: front-end
+spec:
+  selector:
+    matchLabels:
+      app: front-end
+  template:
+    metadata:
+      labels:
+        app: front-end
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - name: front-end
+          image: systemautoscaler/front-end:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 1
+            limits:
+              memory: 128Mi
+              cpu: 1

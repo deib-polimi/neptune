@@ -10,7 +10,7 @@ spec:
     com.openfaas.scale.zero: "true"
   annotations:
     com.openfaas.health.http.path: "/health"
-    com.openfaas.health.http.initialDelay: "5m"
+    com.openfaas.health.http.initialDelay: "30s"
   name: carts-post
   image: weaveworksdemos/carts:0.4.8
   environment:
