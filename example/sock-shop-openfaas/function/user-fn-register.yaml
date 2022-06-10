@@ -1,0 +1,21 @@
+apiVersion: openfaas.com/v1
+kind: Function
+metadata:
+  name: user-register
+  namespace: openfaas-fn
+spec:
+  labels:
+    com.openfaas.scale.max: "10"
+    com.openfaas.scale.min: "1"
+    com.openfaas.scale.zero: "true"
+  annotations:
+    com.openfaas.health.http.path: "/health"
+    com.openfaas.health.http.initialDelay: "30s"
+  name: user-register
+  image: systemautoscaler/user:dev
+  limits:
+    cpu: "50m"
+    memory: "100Mi"
+  requests:
+    cpu: "50m"
+    memory: "100Mi"

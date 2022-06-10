@@ -4,16 +4,18 @@ metadata:
     name: payment
     namespace: openfaas-fn
 spec:
+  integralGain: 3
+  proportionalGain: 6
   metric:
-    responseTime: 50m
+    responseTime: 100m
   defaultResources:
-    cpu: "1000m"
-    memory: 1000Mi
+    cpu: "50"
+    memory: 250Mi
   minResources:
-    memory: 1000Mi
-    cpu: 50m
+    memory: 250Mi
+    cpu: 30m
   maxResources:
-    memory: 1000Mi
+    memory: 250Mi
     cpu: 20000m
   service:
     container: payment

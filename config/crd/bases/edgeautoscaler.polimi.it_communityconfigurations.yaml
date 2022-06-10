@@ -52,7 +52,7 @@ spec:
                 description: MaximumDelay is the upper bound for the delay inside
                   a community measured in milliseconds
                 format: int32
-                maximum: 100
+                maximum: 10000
                 minimum: 0
                 type: integer
               probability-threshold:
