@@ -1,0 +1,37 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: carts-post
+  namespace: openfaas-fn
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: carts-post
+  minReplicas: 1
+  maxReplicas: 50
+  metrics:
+    - type: Object
+      object:
+        metric:
+          name: response_time
+        describedObject:
+          apiVersion: /v1
+          kind: Service
+          name: carts-post
+        target:
+          type: Value
+          value: 150m
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 5
+          periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 15
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 15

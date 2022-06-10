@@ -6,7 +6,11 @@ import (
 	rand "math/rand"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
+
 	"github.com/lterrac/edge-autoscaler/pkg/apis/edgeautoscaler/v1alpha1"
+	dispatcher "github.com/lterrac/edge-autoscaler/pkg/dispatcher/pkg/controller"
 	ealabels "github.com/lterrac/edge-autoscaler/pkg/labels"
 	openfaasv1 "github.com/openfaas/faas-netes/pkg/apis/openfaas/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +31,11 @@ const (
 	HttpMetricsCpu     = 100
 	HttpMetricsMemory  = 200000000
 	DefaultAppPort     = "8080"
+	SchedulerName      = "edge-autoscaler"
+)
+
+var (
+	DefaultTerminationGracePeriodSeconds = pointer.Int64(20)
 )
 
 func (c *CommunityController) runScheduler(_ string) error {
@@ -160,8 +169,10 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 	var err error
 
 	// used to delete duplicated pods
-	deleteSet := make([]*corev1.Pod, 0)
-	createSet := make([]*corev1.Pod, 0)
+	deleteMap := make(map[string][]*corev1.Pod)
+	createMap := make(map[string][]*corev1.Pod)
+	actualPods := make(map[string][]*corev1.Pod)
+	outOfCPUPods := make([]*corev1.Pod, 0)
 
 	// Find the pods that are correctly deployed
 	// Pods which are not correctly deployed are appended in the deleteSet
@@ -176,26 +187,32 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 						podsMap[fKey] = make(map[string]*corev1.Pod)
 					}
 
+					if _, ok := deleteMap[fKey]; !ok {
+						deleteMap[fKey] = make([]*corev1.Pod, 0)
+					}
+
 					if _, ok := podsMap[fKey][pod.Spec.NodeName]; ok {
-						deleteSet = append(deleteSet, pod)
+						deleteMap[fKey] = append(deleteMap[fKey], pod)
 					} else {
 						podsMap[fKey][pod.Spec.NodeName] = pod
 					}
 				}
 			}
 		}
-	}
-	for _, pod := range createSet {
-		klog.Infof("creating pod %s", pod.Name)
+
+		if pod.Status.Phase == corev1.PodFailed && pod.Status.Reason == "OutOfcpu" {
+			outOfCPUPods = append(outOfCPUPods, pod)
+		}
+
 	}
 
 	// Compute the pod creation set
 	// Pods which are correctly deployed are deleted from podsMap, in this way podsMap will contain only pods
 	// which should be deleted
-	for functionKey, nodes := range functionKeys {
-		fNamespace, fName, err := cache.SplitMetaNamespaceKey(functionKey)
+	for fKey, nodes := range functionKeys {
+		fNamespace, fName, err := cache.SplitMetaNamespaceKey(fKey)
 		if err != nil {
-			klog.Errorf("invalid resource key: %s", functionKey)
+			klog.Errorf("invalid resource key: %s", fKey)
 			return err
 		}
 		function, err := c.listers.Functions(fNamespace).Get(fName)
@@ -205,8 +222,13 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 		}
 		for nodeName, ok := range nodes {
 			if ok {
-				if _, ok := podsMap[functionKey][nodeName]; ok {
-					delete(podsMap[functionKey], nodeName)
+				if _, ok := podsMap[fKey][nodeName]; ok {
+					if _, ok := actualPods[fKey]; !ok {
+						actualPods[fKey] = make([]*corev1.Pod, 0)
+					}
+
+					actualPods[fKey] = append(actualPods[fKey], podsMap[fKey][nodeName])
+					delete(podsMap[fKey], nodeName)
 					continue
 				}
 
@@ -225,33 +247,85 @@ func (c *CommunityController) sync(cs *v1alpha1.CommunitySchedule, pods []*corev
 					pod = newCPUPod(function, cs, node)
 				}
 
-				createSet = append(createSet, pod)
+				if _, ok := createMap[fKey]; !ok {
+					createMap[fKey] = make([]*corev1.Pod, 0)
+				}
 
+				createMap[fKey] = append(createMap[fKey], pod)
 			}
 		}
 	}
 
-	for _, nodes := range podsMap {
+	for fKey, nodes := range podsMap {
 		for _, pod := range nodes {
-			deleteSet = append(deleteSet, pod)
+			deleteMap[fKey] = append(deleteMap[fKey], pod)
 		}
 	}
 
-	for _, pod := range createSet {
-		node := pod.Labels[ealabels.NodeLabel]
-		pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-		if err != nil {
-			klog.Errorf("failed to create pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
-			return err
-		}
-		err = c.bind(pod, node)
-		if err != nil {
-			klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
-			return err
+	for fKey, pods := range createMap {
+		for _, pod := range pods {
+			node := pod.Labels[ealabels.NodeLabel]
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			if err != nil {
+				klog.Errorf("failed to create pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+			err = c.bind(pod, node)
+			if err != nil {
+				klog.Errorf("failed to bind pod %s/%s to node %s, with error %v", pod.Namespace, pod.Name, node, err)
+				return err
+			}
+			klog.Infof("created function %s pod %s", fKey, pod.Name)
 		}
 	}
 
-	for _, pod := range deleteSet {
+	for fKey, pods := range createMap {
+		for _, pod := range pods {
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+
+			// do not delete old pods if all the new ones are not ready
+			if !dispatcher.IsPodReady(pod) {
+				klog.Infof("function %s is not ready, skipping delete set", fKey)
+				deleteMap[fKey] = nil
+				break
+			}
+		}
+	}
+
+	for fKey, pods := range actualPods {
+		for _, pod := range pods {
+			pod, err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to get pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+
+			// do not delete old pods if all the new ones are not ready
+			if !dispatcher.IsPodReady(pod) {
+				klog.Infof("function %s is not ready, skipping delete set", fKey)
+				deleteMap[fKey] = nil
+				break
+			}
+		}
+	}
+
+	for fKey, pods := range deleteMap {
+		for _, pod := range pods {
+			err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
+				return err
+			}
+			klog.Infof("delete function %s pod %s", fKey, pod.Name)
+
+		}
+	}
+
+	for _, pod := range outOfCPUPods {
 		err = c.kubernetesClientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 		if err != nil {
 			klog.Errorf("failed to delete pod %s/%s, with error %v", pod.Namespace, pod.Name, err)
@@ -303,7 +377,8 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 			},
 		},
 		Spec: corev1.PodSpec{
-			SchedulerName: "edge-autoscaler",
+			SchedulerName:                 SchedulerName,
+			TerminationGracePeriodSeconds: DefaultTerminationGracePeriodSeconds,
 			Containers: []corev1.Container{
 				{
 					Name:  function.Spec.Name,
@@ -373,6 +448,32 @@ func newCPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
 					},
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds: 5,
+						TimeoutSeconds:      60,
+						PeriodSeconds:       5,
+						SuccessThreshold:    1,
+						FailureThreshold:    1000,
+					},
+					ReadinessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds: 5,
+						TimeoutSeconds:      60,
+						PeriodSeconds:       5,
+						SuccessThreshold:    1,
+						FailureThreshold:    1000,
+					},
 				},
 			},
 		},
@@ -438,7 +539,6 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 				ealabels.CommunityLabel.WithNamespace(cs.Namespace).String(): cs.Name,
 				ealabels.NodeLabel:                                           node.Name,
 				ealabels.GpuFunctionLabel:                                    "",
-				"autoscaling":                                                "vertical",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(function, schema.GroupVersionKind{
@@ -449,8 +549,9 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 			},
 		},
 		Spec: corev1.PodSpec{
-			SchedulerName: "edge-autoscaler",
-			HostIPC:       true,
+			SchedulerName:                 "edge-autoscaler",
+			HostIPC:                       true,
+			TerminationGracePeriodSeconds: DefaultTerminationGracePeriodSeconds,
 			Volumes: []corev1.Volume{
 				{
 					Name: "nvidia-mps",
@@ -537,6 +638,32 @@ func newGPUPod(function *openfaasv1.Function, cs *v1alpha1.CommunitySchedule, no
 							corev1.ResourceCPU:    *resource.NewMilliQuantity(HttpMetricsCpu, resource.BinarySI),
 							corev1.ResourceMemory: *resource.NewQuantity(HttpMetricsMemory, resource.BinarySI),
 						},
+					},
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds: 5,
+						TimeoutSeconds:      60,
+						PeriodSeconds:       5,
+						SuccessThreshold:    1,
+						FailureThreshold:    1000,
+					},
+					ReadinessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/health",
+								Port: intstr.FromInt(8080),
+							},
+						},
+						InitialDelaySeconds: 5,
+						TimeoutSeconds:      60,
+						PeriodSeconds:       5,
+						SuccessThreshold:    1,
+						FailureThreshold:    1000,
 					},
 				},
 			},

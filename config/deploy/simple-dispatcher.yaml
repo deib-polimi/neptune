@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: simple-dispatcher
+  namespace: default
+  labels:
+    app: dispatcher
+spec:
+  selector:
+    matchLabels:
+      app: dispatcher
+  template:
+    metadata:
+      labels:
+        app: dispatcher
+    spec:
+      automountServiceAccountToken: true
+      nodeSelector:
+        kubernetes.io/kind: worker
+      serviceAccountName: dispatcher
+      containers:
+        - name: dispatcher
+          image: systemautoscaler/simple-dispatcher:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dispatcher
+  labels:
+    app: dispatcher
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: dispatcher
+

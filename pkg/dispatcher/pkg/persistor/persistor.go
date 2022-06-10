@@ -29,7 +29,6 @@ var (
 )
 
 const (
-	// InsertMetricQuery is the prepare statement for inserting metrics.
 	batchSize = 1000
 	table     = "metric"
 )

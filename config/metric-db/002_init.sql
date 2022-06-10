@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS ping
   timestamp TIMESTAMP,
   from_node VARCHAR(50),
   to_node VARCHAR(50),
-  avg_latency INTEGER,
-  max_latency INTEGER,
-  min_latency INTEGER,
+  avg_latency DOUBLE PRECISION,
+  max_latency DOUBLE PRECISION,
+  min_latency DOUBLE PRECISION,
   PRIMARY KEY (timestamp, from_node)
   );
 
@@ -47,3 +47,19 @@ CREATE TABLE IF NOT EXISTS resource
 );
 
 SELECT create_hypertable('resource', 'timestamp', chunk_time_interval => INTERVAL '5 minutes');
+
+CREATE TABLE IF NOT EXISTS proxy_metric
+(
+  timestamp TIMESTAMP,
+  node VARCHAR(50),
+  function VARCHAR(50),
+  namespace VARCHAR(50),
+  community VARCHAR(50),
+  latency INTEGER,
+  gpu BOOLEAN,
+  PRIMARY KEY (timestamp, node, function, namespace, community)
+  );
+
+SELECT create_hypertable('proxy_metric', 'timestamp', chunk_time_interval => INTERVAL '30 seconds');
+SELECT add_dimension('proxy_metric', 'community', number_partitions => 4);
+SELECT add_dimension('proxy_metric', 'namespace', number_partitions => 4);

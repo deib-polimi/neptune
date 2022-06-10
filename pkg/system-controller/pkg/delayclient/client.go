@@ -11,7 +11,7 @@ import (
 type NodeDelay struct {
 	FromNode string
 	ToNode   string
-	Latency  int
+	Latency  float64
 }
 
 const (
