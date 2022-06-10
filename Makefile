@@ -1,5 +1,6 @@
+SHELL:=/bin/bash
 MAKEFLAGS += --no-print-directory
-COMPONENTS = community-controller system-controller edge-scheduler function-deployment-webhook dispatcher
+COMPONENTS = community-controller cpu-monitoring simple-dispatcher simple-dispatcher-of system-controller dispatcher
 
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin

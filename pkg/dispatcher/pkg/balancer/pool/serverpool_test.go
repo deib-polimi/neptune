@@ -49,7 +49,7 @@ func TestPool(t *testing.T) {
 
 			verifyFunc: func(t *testing.T, p *ServerPool) {
 				expectedLength := len(backends)
-				for _, b := range backends {
+				for _, b := range backends[0 : len(backends)-1] {
 					p.RemoveBackend(b)
 					actual, found := p.GetBackend(b.URL)
 					require.False(t, found)
