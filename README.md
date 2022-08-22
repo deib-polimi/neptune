@@ -103,14 +103,16 @@ You can find a presentation of this work on [Youtube](https://youtu.be/bvtL6Ohme
 
 ## Citation
 If you use this code for evidential learning as part of your project or paper, please cite the following work:  
-
-    @article{baresi2022neptune,
-      title={{NEPTUNE}: Network- and GPU-aware Management of Serverless Functions at the Edge},
-      author={Baresi, Luciano and Hu, Davide Yi Xian and Quattrocchi, Giovanni and Terracciano, Luca},
-      journal={SEAMS},
-      year={2022}
-    }
-    
+```
+@inproceedings{seams2022,
+    author = {Baresi, Luciano and Hu, Davide Yi Xian and Quattrocchi, Giovanni and Terracciano, Luca},
+    title = {NEPTUNE: Network- and GPU-Aware Management of Serverless Functions at the Edge},
+    year = {2022},
+    doi = {10.1145/3524844.3528051},
+    booktitle = {Proceedings of the 17th Symposium on Software Engineering for Adaptive and Self-Managing Systems},
+    pages = {144–155},
+}
+```
 ## Contributors
 * **[Davide Yi Xian Hu](https://github.com/DragonBanana)**
 * **[Luca Terracciano](https://github.com/lterrac)**
