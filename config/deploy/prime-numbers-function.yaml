@@ -4,7 +4,7 @@ metadata:
   name: prime-numbers
   namespace: openfaas-fn
 spec:
-  image: systemautoscaler/prime-numbers:0.1.0
+  image: systemautoscaler/prime-numbers:dev
   labels:
     com.openfaas.scale.factor: "20"
     com.openfaas.scale.max: "100"
@@ -13,5 +13,51 @@ spec:
     edgeautoscaler.polimi.it/scheduler: edge-autoscaler
   name: prime-numbers
   readOnlyRootFilesystem: false
+  limits:
+    cpu: "200m"
+    memory: "1000Mi"
   requests:
-    memory: 1M
+    cpu: "200m"
+    memory: "1000Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prime-numbers
+  labels:
+    name: prime-numbers
+  namespace: openfaas-fn
+spec:
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    edgeautoscaler.polimi.it/function-name: "prime-numbers"
+    edgeautoscaler.polimi.it/function-namespace: "openfaas-fn"
+  topologyKeys:
+    - "kubernetes.io/hostname"
+    - "*"
+
+---
+apiVersion: systemautoscaler.polimi.it/v1beta1
+kind: ServiceLevelAgreement
+metadata:
+    name: prime-numbers
+    namespace: openfaas-fn
+spec:
+  metric:
+    responseTime: 100m
+  defaultResources:
+    cpu: "300m"
+    memory: "768Mi"
+  minResources:
+    memory: 10Mi
+    cpu: 300m
+  maxResources:
+    memory: 2048Mi
+    cpu: 20000m
+  service:
+    container: prime-numbers
+    selector:
+      matchLabels:
+        name: prime-numbers

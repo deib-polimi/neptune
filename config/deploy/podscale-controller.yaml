@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: sa-monitoring
-  namespace: default
+  name: podscale-controller
+  namespace: kube-system
 automountServiceAccountToken: false
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: system-autoscaler:sa-monitoring
+  name: system-autoscaler:podscale-controller
 rules:
   - apiGroups: [""]
     resources: ["pods", "services", "nodes"]
@@ -26,36 +26,46 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: system-autoscaler:sa-monitoring
+  name: system-autoscaler:podscale-controller
 subjects:
   - kind: ServiceAccount
-    name: sa-monitoring
-    namespace: default
+    name: podscale-controller
+    namespace: kube-system
     apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: system-autoscaler:sa-monitoring
+  name: system-autoscaler:podscale-controller
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: monitoring
+  name: podscale-controller
+  namespace: kube-system
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: monitoring
+      app: podscale-controller
   replicas: 1
   template:
     metadata:
       labels:
-        app: monitoring
+        app: podscale-controller
     spec:
       nodeSelector:
         node-role.kubernetes.io/master: "true"
       automountServiceAccountToken: true
-      serviceAccountName: sa-monitoring
+      serviceAccountName: podscale-controller
       containers:
-        - name: monitoring
-          image: systemautoscaler/system-autoscaler-monitoring:distributed
+        - name: podscale-controller
+          image: systemautoscaler/podscale-controller:dev
           imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
