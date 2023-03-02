@@ -63,3 +63,19 @@ CREATE TABLE IF NOT EXISTS proxy_metric
 SELECT create_hypertable('proxy_metric', 'timestamp', chunk_time_interval => INTERVAL '30 seconds');
 SELECT add_dimension('proxy_metric', 'community', number_partitions => 4);
 SELECT add_dimension('proxy_metric', 'namespace', number_partitions => 4);
+
+CREATE TABLE IF NOT EXISTS pod_log
+(
+  timestamp TIMESTAMP,
+  pod_name VARCHAR(50),
+  container_name VARCHAR(50),
+  pod_address VARCHAR(50),
+  node VARCHAR(50),
+  cpu DOUBLE PRECISION,
+  mem DOUBLE PRECISION,
+  response_time DOUBLE PRECISION,
+  PRIMARY KEY (timestamp, pod_name)
+  );
+
+SELECT create_hypertable('pod_log', 'timestamp', chunk_time_interval => INTERVAL '30 seconds');
+SELECT add_dimension('pod_log', 'pod_name', number_partitions => 4);
