@@ -38,3 +38,7 @@ kubectl label nodes kind-control-plane node-role.kubernetes.io/master=true --ove
 ```shell
 kubectl apply -f config/deploy
 ```
+
+Everything should work except for delay-discovery.
+
+Enjoy!
