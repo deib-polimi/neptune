@@ -15,8 +15,8 @@ spec:
         app: dispatcher
     spec:
       automountServiceAccountToken: true
-      nodeSelector:
-        kubernetes.io/kind: worker
+      # nodeSelector:
+        # kubernetes.io/kind: worker
       serviceAccountName: dispatcher
       # tolerations:
         # this toleration is to have the daemonset runnable on master nodes
